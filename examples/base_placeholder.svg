@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540">
+  <rect width="960" height="540" fill="#f6f8fb"/>
+  <rect x="40" y="32" width="880" height="72" rx="14" fill="#ffffff"/>
+  <circle cx="82" cy="68" r="18" fill="#2563eb"/>
+  <text x="118" y="74" font-family="Arial" font-size="20" fill="#111827">Dashboard</text>
+  <circle cx="860" cy="68" r="22" fill="#dbeafe"/>
+  <rect x="64" y="142" width="244" height="126" rx="16" fill="#ffffff"/>
+  <rect x="358" y="142" width="244" height="126" rx="16" fill="#ffffff"/>
+  <rect x="652" y="142" width="244" height="126" rx="16" fill="#ffffff"/>
+  <text x="88" y="186" font-family="Arial" font-size="16" fill="#6b7280">Revenue</text>
+  <text x="88" y="226" font-family="Arial" font-size="34" fill="#111827">$42.8k</text>
+  <text x="382" y="186" font-family="Arial" font-size="16" fill="#6b7280">Users</text>
+  <text x="382" y="226" font-family="Arial" font-size="34" fill="#111827">18,240</text>
+  <text x="676" y="186" font-family="Arial" font-size="16" fill="#6b7280">Conversion</text>
+  <text x="676" y="226" font-family="Arial" font-size="34" fill="#111827">8.7%</text>
+  <rect x="64" y="320" width="560" height="160" rx="16" fill="#ffffff"/>
+  <rect x="672" y="320" width="224" height="160" rx="16" fill="#ffffff"/>
+  <rect x="708" y="424" width="152" height="40" rx="10" fill="#2563eb"/>
+  <text x="744" y="450" font-family="Arial" font-size="15" fill="#ffffff">Upgrade</text>
+</svg>
+

@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>UI Auto Gen</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="control-panel">
+        <header class="app-header">
+          <div>
+            <p class="eyebrow">UI Auto Gen</p>
+            <h1>自动化 UI 图生成流程</h1>
+          </div>
+          <button id="runButton" class="primary-button" type="button">
+            <span class="button-icon">▶</span>
+            运行
+          </button>
+        </header>
+
+        <form id="jobForm" class="form-grid">
+          <label class="field field-wide">
+            <span>提示词</span>
+            <textarea id="prompt" rows="4" placeholder="例如：把这张 dashboard 改成冷静、专业、高级的深色企业后台风格，保留布局和文字。"></textarea>
+          </label>
+
+          <label class="field">
+            <span>正向规则</span>
+            <textarea id="positiveRules" rows="5" placeholder="例如：保留层级；按钮更明确；卡片统一圆角；文字清晰；图标线宽一致。"></textarea>
+          </label>
+
+          <label class="field">
+            <span>反向规则</span>
+            <textarea id="negativeRules" rows="5" placeholder="例如：不要改动文字内容；不要模糊；不要过度渐变；不要破坏间距。"></textarea>
+          </label>
+
+          <label class="field field-wide">
+            <span>需要处理的元素</span>
+            <input id="elementHints" type="text" placeholder="例如：按钮, 统计卡片, 用户头像, 图标, 图表" />
+          </label>
+
+          <fieldset class="field field-wide segmented-field">
+            <legend>底图来源</legend>
+            <div class="segmented">
+              <label><input type="radio" name="baseMode" value="sample" checked /> 示例底图</label>
+              <label><input type="radio" name="baseMode" value="upload" /> 上传底图</label>
+              <label><input type="radio" name="baseMode" value="text" /> 文生图占位</label>
+            </div>
+          </fieldset>
+
+          <label class="file-field">
+            <span>底图</span>
+            <input id="baseImage" type="file" accept="image/*,.svg" />
+          </label>
+
+          <label class="file-field">
+            <span>参考图</span>
+            <input id="referenceImage" type="file" accept="image/*,.svg" />
+          </label>
+
+          <label class="field">
+            <span>检测算法</span>
+            <select id="detector">
+              <option value="placeholder_detector">占位检测器</option>
+              <option value="yolo26">YOLO26</option>
+              <option value="grounded_sam">Grounded SAM</option>
+              <option value="vlm_region_proposal">VLM 区域提议</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>分割算法</span>
+            <select id="segmenter">
+              <option value="placeholder_segmenter">占位分割器</option>
+              <option value="sam2">SAM2</option>
+              <option value="yolo26_seg">YOLO26 Seg</option>
+              <option value="mask_refiner">Mask Refiner</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>OCR</span>
+            <select id="ocr">
+              <option value="placeholder_ocr">占位 OCR</option>
+              <option value="paddleocr">PaddleOCR</option>
+              <option value="doctr">docTR</option>
+              <option value="vlm_ocr">VLM OCR</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>风格替换</span>
+            <select id="style">
+              <option value="placeholder_style_adapter">占位风格器</option>
+              <option value="controlnet_ipadapter">ControlNet + IPAdapter</option>
+              <option value="parameter_ui_renderer">参数化 UI 重绘</option>
+              <option value="asset_library">资产库替换</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>自审</span>
+            <select id="review">
+              <option value="contract_review">契约检查</option>
+              <option value="vlm_review">VLM 视觉自审</option>
+              <option value="ocr_layout_review">OCR + 布局检查</option>
+            </select>
+          </label>
+
+          <div class="checks">
+            <label><input id="preserveLayout" type="checkbox" checked /> 保持原布局</label>
+            <label><input id="keepText" type="checkbox" checked /> 保留文字</label>
+          </div>
+        </form>
+      </section>
+
+      <section class="result-panel">
+        <div class="preview-strip">
+          <div class="preview-box">
+            <span>底图预览</span>
+            <img id="basePreview" alt="底图预览" src="/static/sample-thumb.svg" />
+          </div>
+          <div class="preview-box">
+            <span>参考图预览</span>
+            <div id="referencePreview" class="empty-preview">未选择</div>
+          </div>
+        </div>
+
+        <div class="run-status">
+          <div>
+            <p class="eyebrow">Run</p>
+            <h2 id="statusTitle">等待运行</h2>
+          </div>
+          <a id="summaryLink" class="ghost-link" href="#" target="_blank" hidden>查看摘要</a>
+        </div>
+
+        <ol id="stageList" class="stage-list">
+          <li>00 Ingest</li>
+          <li>01 Plan</li>
+          <li>02 Detect</li>
+          <li>03 Segment</li>
+          <li>04 Cutout</li>
+          <li>05 Style</li>
+          <li>06 Compose</li>
+          <li>07 Review</li>
+          <li>08 Export</li>
+        </ol>
+
+        <figure class="final-output">
+          <figcaption>最终结果</figcaption>
+          <div id="resultEmpty" class="empty-output">运行后会显示最终图像</div>
+          <img id="resultImage" alt="最终结果" hidden />
+        </figure>
+      </section>
+    </main>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>
+
