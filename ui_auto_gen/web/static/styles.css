@@ -206,6 +206,8 @@ input[type="file"] {
 }
 
 .preview-box span,
+.debug-card span,
+.stage-detail span,
 .final-output figcaption {
   color: #334155;
   font-size: 13px;
@@ -255,6 +257,12 @@ input[type="file"] {
   background: #f0fdf4;
 }
 
+.stage-list li.selected {
+  color: var(--accent);
+  border-color: #93c5fd;
+  background: #eff6ff;
+}
+
 .stage-list li.pending {
   color: var(--warning);
   border-color: #fed7aa;
@@ -263,6 +271,69 @@ input[type="file"] {
 
 .final-output {
   margin: 0;
+}
+
+.debug-gallery {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 22px;
+}
+
+.debug-card {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.debug-card header,
+.stage-detail header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.debug-card a {
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.debug-card img,
+.empty-output.compact {
+  width: 100%;
+  height: 180px;
+  object-fit: contain;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #ffffff;
+}
+
+.stage-detail {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 22px;
+}
+
+#detailHint {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.stage-detail pre {
+  max-height: 220px;
+  margin: 0;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #ffffff;
+  color: #334155;
+  font: 12px/1.5 Consolas, "Courier New", monospace;
+  padding: 12px;
 }
 
 .final-output img,
@@ -281,6 +352,7 @@ input[type="file"] {
   .app-shell,
   .form-grid,
   .preview-strip,
+  .debug-gallery,
   .stage-list {
     grid-template-columns: 1fr;
   }
@@ -290,4 +362,3 @@ input[type="file"] {
     padding: 20px;
   }
 }
-

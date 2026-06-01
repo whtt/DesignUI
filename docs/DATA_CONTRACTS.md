@@ -97,6 +97,9 @@ All contracts include a `schema_version` field. Breaking changes should incremen
   "schema_version": "1.0",
   "requested_algorithm": "yolo26",
   "actual_adapter": "placeholder_detector",
+  "debug_artifacts": {
+    "detection_preview": "02_detect/detection_preview.svg"
+  },
   "detections": [
     {
       "detection_id": "det_primary_buttons_001",
@@ -119,6 +122,9 @@ All contracts include a `schema_version` field. Breaking changes should incremen
   "schema_version": "1.0",
   "requested_algorithm": "sam2",
   "actual_adapter": "placeholder_segmenter",
+  "debug_artifacts": {
+    "mask_preview": "03_segment/mask_preview.svg"
+  },
   "masks": [
     {
       "mask_id": "mask_det_primary_buttons_001",

@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>UI Auto Gen</title>
+    <title>DesignUI</title>
     <link rel="stylesheet" href="/static/styles.css" />
   </head>
   <body>
@@ -11,7 +11,7 @@
       <section class="control-panel">
         <header class="app-header">
           <div>
-            <p class="eyebrow">UI Auto Gen</p>
+            <p class="eyebrow">DesignUI</p>
             <h1>自动化 UI 图生成流程</h1>
           </div>
           <button id="runButton" class="primary-button" type="button">
@@ -137,16 +137,53 @@
         </div>
 
         <ol id="stageList" class="stage-list">
-          <li>00 Ingest</li>
-          <li>01 Plan</li>
-          <li>02 Detect</li>
-          <li>03 Segment</li>
-          <li>04 Cutout</li>
-          <li>05 Style</li>
-          <li>06 Compose</li>
-          <li>07 Review</li>
-          <li>08 Export</li>
+          <li data-stage="00_ingest">00 Ingest</li>
+          <li data-stage="01_plan">01 Plan</li>
+          <li data-stage="02_detect">02 Detect</li>
+          <li data-stage="03_segment">03 Segment</li>
+          <li data-stage="04_cutout">04 Cutout</li>
+          <li data-stage="05_style">05 Style</li>
+          <li data-stage="06_compose">06 Compose</li>
+          <li data-stage="07_review">07 Review</li>
+          <li data-stage="08_export">08 Export</li>
         </ol>
+
+        <section class="debug-gallery">
+          <article class="debug-card">
+            <header>
+              <span>检测框预览</span>
+              <a id="detectionPreviewLink" href="#" target="_blank" hidden>打开</a>
+            </header>
+            <div id="detectionPreviewEmpty" class="empty-output compact">运行后显示检测框</div>
+            <img id="detectionPreview" alt="检测框预览" hidden />
+          </article>
+
+          <article class="debug-card">
+            <header>
+              <span>Mask 预览</span>
+              <a id="maskPreviewLink" href="#" target="_blank" hidden>打开</a>
+            </header>
+            <div id="maskPreviewEmpty" class="empty-output compact">运行后显示 mask</div>
+            <img id="maskPreview" alt="Mask 预览" hidden />
+          </article>
+
+          <article class="debug-card">
+            <header>
+              <span>合成意图</span>
+              <a id="compositionPreviewLink" href="#" target="_blank" hidden>打开</a>
+            </header>
+            <div id="compositionPreviewEmpty" class="empty-output compact">运行后显示放置区域</div>
+            <img id="compositionPreview" alt="合成意图预览" hidden />
+          </article>
+        </section>
+
+        <section class="stage-detail">
+          <header>
+            <span>Stage 详情</span>
+            <span id="detailHint">点击上方步骤查看产物</span>
+          </header>
+          <pre id="stageDetailText">暂无运行详情</pre>
+        </section>
 
         <figure class="final-output">
           <figcaption>最终结果</figcaption>
@@ -159,4 +196,3 @@
     <script src="/static/app.js"></script>
   </body>
 </html>
-

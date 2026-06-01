@@ -10,6 +10,9 @@
 
 ## Phase 1: Real Visual Parsing
 
+- Adapter interfaces for detector, segmenter, style, and review.
+- Visual debug previews for detections and masks.
+- UI run details panel with stage artifacts.
 - OCR adapter.
 - YOLO26 detector adapter for known UI classes.
 - Grounded detector adapter for open-vocabulary prompts.
@@ -43,4 +46,3 @@
 - Human correction UI.
 - Figma/PSD/layer export.
 - Evaluation datasets and score dashboards.
-

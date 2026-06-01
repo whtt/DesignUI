@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+from pathlib import Path
+
+from ui_auto_gen.adapters import PlaceholderSegmenter
 from ui_auto_gen.schemas import PipelineContext, StageResult
 from ui_auto_gen.stages.base import PipelineStage
 from ui_auto_gen.utils import read_json, write_json
+from ui_auto_gen.visual_debug import write_mask_preview
 
 
 class SegmentStage(PipelineStage):
@@ -11,38 +15,30 @@ class SegmentStage(PipelineStage):
     def run(self, context: PipelineContext) -> StageResult:
         paths = context.stage_dir(self.name)
         masks_dir = paths.artifact("masks")
-        masks_dir.mkdir(parents=True, exist_ok=True)
+        ingest_manifest = read_json(context.run_root / "00_ingest" / "ingest_manifest.json")
         detection_manifest = read_json(context.run_root / "02_detect" / "detection_manifest.json")
 
-        masks = []
-        for detection in detection_manifest["detections"]:
-            mask_id = f"mask_{detection['detection_id']}"
-            mask_path = masks_dir / f"{mask_id}.json"
-            mask_payload = {
-                "schema_version": "1.0",
-                "mask_id": mask_id,
-                "shape": "rectangle",
-                "bbox": detection["bbox"],
-                "note": "Placeholder rectangle mask. Replace with raster or polygon mask later.",
-            }
-            write_json(mask_path, mask_payload)
-            masks.append(
-                {
-                    "mask_id": mask_id,
-                    "detection_id": detection["detection_id"],
-                    "mask_path": str(mask_path),
-                    "bbox": detection["bbox"],
-                    "confidence": detection.get("confidence", 0.0),
-                    "source": "placeholder_segmenter",
-                }
-            )
-
         requested_algorithm = context.config.get("algorithms", {}).get("segmenter", "placeholder_segmenter")
+        adapter = PlaceholderSegmenter()
+        masks = adapter.segment(detection_manifest["detections"], masks_dir)
+        width = ingest_manifest["base_image"].get("width") or 960
+        height = ingest_manifest["base_image"].get("height") or 540
+        preview_path = paths.artifact("mask_preview.svg")
+        write_mask_preview(
+            base_image=Path(ingest_manifest["base_image"]["run_path"]),
+            width=width,
+            height=height,
+            masks=masks,
+            destination=preview_path,
+        )
         manifest = {
             "schema_version": "1.0",
             "requested_algorithm": requested_algorithm,
-            "actual_adapter": "placeholder_segmenter",
+            "actual_adapter": adapter.adapter_name,
             "masks": masks,
+            "debug_artifacts": {
+                "mask_preview": str(preview_path),
+            },
         }
         manifest_path = paths.artifact("segmentation_manifest.json")
         write_json(manifest_path, manifest)
@@ -55,6 +51,6 @@ class SegmentStage(PipelineStage):
         return StageResult(
             stage=self.name,
             status="completed",
-            artifacts={"manifest": str(manifest_path), "masks_dir": str(masks_dir)},
+            artifacts={"manifest": str(manifest_path), "masks_dir": str(masks_dir), "mask_preview": str(preview_path)},
             notes=[f"Created {len(masks)} placeholder mask manifests."],
         )

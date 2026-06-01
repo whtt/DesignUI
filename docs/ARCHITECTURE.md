@@ -17,6 +17,12 @@ ui_auto_gen/
   paths.py
   schemas.py
   utils.py
+  visual_debug.py
+  adapters/
+    detector.py
+    segmenter.py
+    style.py
+    reviewer.py
   stages/
     base.py
     ingest.py
@@ -80,17 +86,30 @@ The result provides:
 
 ## Adapter Strategy
 
-Future model-backed stages should use small adapters:
+Model-backed stages should use small adapters:
 
 ```text
-stages/detect.py
-  DetectorAdapter
-    PlaceholderDetector
-    YoloDetector
-    GroundedSamDetector
+adapters/detector.py
+  DetectorAdapter -> PlaceholderDetector -> future YoloDetector / GroundedSamDetector
+adapters/segmenter.py
+  SegmenterAdapter -> PlaceholderSegmenter -> future SamSegmenter / YoloSegmenter
+adapters/style.py
+  StyleAdapter -> PlaceholderStyleAdapter -> future ControlNet/IPAdapter adapter
+adapters/reviewer.py
+  ReviewAdapter -> ContractReviewer -> future VLM reviewer
 ```
 
 Only the adapter implementation should know model-specific details. The stage output contract should remain stable.
+
+## Visual Debug Artifacts
+
+The current debug layer writes SVG previews without external dependencies:
+
+- `02_detect/detection_preview.svg`: base image plus detection boxes.
+- `03_segment/mask_preview.svg`: base image plus translucent placeholder masks.
+- `06_compose/composition_preview.svg`: base image plus intended asset placement.
+
+These previews are served by the local UI through `/artifacts/...` links.
 
 ## Local UI
 

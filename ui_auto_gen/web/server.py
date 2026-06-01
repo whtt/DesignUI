@@ -77,12 +77,14 @@ class UiServer:
                         "summary_url": _artifact_url(output_root, summary),
                         "final_image_path": str(final_image),
                         "final_image_url": _artifact_url(output_root, final_image),
+                        "debug_images": _collect_debug_images(output_root, results),
                         "stages": [
                             {
                                 "name": result.stage,
                                 "status": result.status,
                                 "notes": result.notes,
                                 "artifacts": result.artifacts,
+                                "artifact_urls": _artifact_urls(output_root, result.artifacts),
                             }
                             for result in results
                         ],
@@ -268,6 +270,27 @@ def _artifact_url(output_root: Path, path: Path) -> str:
     return f"/artifacts/{relative}"
 
 
+def _artifact_urls(output_root: Path, artifacts: dict[str, str]) -> dict[str, str]:
+    urls = {}
+    for key, value in artifacts.items():
+        path = Path(value)
+        if path.exists() and path.is_file() and _is_relative_to(path.resolve(), output_root.resolve()):
+            urls[key] = _artifact_url(output_root, path)
+    return urls
+
+
+def _collect_debug_images(output_root: Path, results: list[Any]) -> dict[str, str]:
+    debug_images = {}
+    debug_keys = {"detection_preview", "mask_preview", "composition_preview"}
+    for result in results:
+        for key, value in result.artifacts.items():
+            if key in debug_keys:
+                path = Path(value)
+                if path.exists() and path.is_file() and _is_relative_to(path.resolve(), output_root.resolve()):
+                    debug_images[key] = _artifact_url(output_root, path)
+    return debug_images
+
+
 def _is_relative_to(path: Path, parent: Path) -> bool:
     try:
         path.relative_to(parent)
@@ -289,4 +312,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

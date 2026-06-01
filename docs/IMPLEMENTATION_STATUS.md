@@ -2,35 +2,27 @@
 
 本文档记录当前本地 UI 和自动化 UI 图生成 pipeline 的真实接入状态。
 
-结论先说清楚：当前版本已经把“傻瓜式 UI → 生成 job config → 跑完整 pipeline → 产出 run artifacts”的工程链路接通了，但检测、分割、OCR、抠图、风格迁移、视觉自审等模型能力仍是占位实现。
+结论：当前版本已经把“本地 UI -> 生成 job config -> 跑完整 pipeline -> 产出 run artifacts -> 展示调试图和 stage 详情”的工程链路接通。真实检测、分割、OCR、抠图、风格迁移、视觉自审等模型能力仍未接入，当前仍以占位 adapter 为主。
 
 ## 已完成项
 
 ### 本地 UI
 
 - 已完成：本地 Web UI 页面。
-- 已完成：提示词输入框。
-- 已完成：正向规则输入框。
-- 已完成：反向规则输入框。
-- 已完成：需要处理的元素输入框。
-- 已完成：底图来源选择。
-- 已完成：示例底图模式。
-- 已完成：上传底图控件。
-- 已完成：文生图占位模式。
-- 已完成：参考图上传控件。
-- 已完成：底图预览。
-- 已完成：参考图预览。
-- 已完成：检测算法下拉选择。
-- 已完成：分割算法下拉选择。
-- 已完成：OCR 下拉选择。
-- 已完成：风格替换下拉选择。
-- 已完成：自审下拉选择。
-- 已完成：保持原布局开关。
-- 已完成：保留文字开关。
-- 已完成：运行按钮。
+- 已完成：提示词、正向规则、反向规则输入。
+- 已完成：需要处理的元素输入。
+- 已完成：底图来源选择：示例底图、上传底图、文生图占位。
+- 已完成：参考图上传和预览。
+- 已完成：检测、分割、OCR、风格替换、自审算法选择。
+- 已完成：保持原布局、保留文字开关。
+- 已完成：一键运行。
 - 已完成：运行后展示 stage 状态。
 - 已完成：运行后展示最终图。
-- 已完成：运行后提供摘要链接。
+- 已完成：运行后展示摘要链接。
+- 已完成：运行后展示检测框预览。
+- 已完成：运行后展示 mask 预览。
+- 已完成：运行后展示合成意图预览。
+- 已完成：点击 stage 后展示 notes 和 artifact links。
 
 ### 后端服务
 
@@ -38,11 +30,13 @@
 - 已完成：`GET /` 返回 UI 页面。
 - 已完成：`POST /api/run` 接收 UI 表单数据。
 - 已完成：将 UI 表单数据转换为 job config。
-- 已完成：保存上传的底图文件。
-- 已完成：保存上传的参考图文件。
-- 已完成：文生图占位模式生成一张 SVG 占位底图。
-- 已完成：调用现有 `PipelineRunner`。
+- 已完成：保存上传底图。
+- 已完成：保存上传参考图。
+- 已完成：文生图占位模式生成 SVG 底图。
+- 已完成：调用 `PipelineRunner`。
 - 已完成：返回 run id、最终图路径、摘要路径、stage 状态。
+- 已完成：返回 debug image URLs。
+- 已完成：返回每个 stage 的 artifact URLs。
 - 已完成：通过 `/artifacts/...` 访问运行产物。
 
 ### Pipeline 工程链路
@@ -61,6 +55,24 @@
 - 已完成：运行产物统一存放在 `runs/`。
 - 已完成：UI 生成的临时 job config 统一存放在 `workspace/ui_jobs/`。
 
+### Adapter 边界
+
+- 已完成：`DetectorAdapter` 接口。
+- 已完成：`PlaceholderDetector` 占位检测器。
+- 已完成：`SegmenterAdapter` 接口。
+- 已完成：`PlaceholderSegmenter` 占位分割器。
+- 已完成：`StyleAdapter` 接口。
+- 已完成：`PlaceholderStyleAdapter` 占位风格器。
+- 已完成：`ReviewAdapter` 接口。
+- 已完成：`ContractReviewer` 契约检查器。
+
+### 可视化调试产物
+
+- 已完成：`02_detect/detection_preview.svg`，展示检测框。
+- 已完成：`03_segment/mask_preview.svg`，展示半透明占位 mask。
+- 已完成：`06_compose/composition_preview.svg`，展示合成放置意图。
+- 已完成：这些调试图会通过 UI 展示，并可通过 artifact link 打开。
+
 ### 文档
 
 - 已完成：需求文档 `docs/PRD.md`。
@@ -68,15 +80,14 @@
 - 已完成：架构文档 `docs/ARCHITECTURE.md`。
 - 已完成：数据契约文档 `docs/DATA_CONTRACTS.md`。
 - 已完成：路线图 `docs/ROADMAP.md`。
+- 已完成：可视化调试目标文档 `docs/NEXT_GOAL_DEBUG_UI.md`。
 - 已完成：当前实现状态文档 `docs/IMPLEMENTATION_STATUS.md`。
 
 ## 占位或未接入项
 
 ### 提示词和规则
 
-- 占位：提示词目前会被保存到 job config。
-- 占位：正向规则目前会被保存到 job config。
-- 占位：反向规则目前会被保存到 job config。
+- 占位：提示词、正向规则、反向规则会被保存到 job config。
 - 未接入：提示词还没有真正驱动 VLM 规划。
 - 未接入：正反规则还没有真正约束检测、生成或自审。
 - 未接入：还没有 prompt 模板系统。
@@ -98,7 +109,7 @@
 ### 检测算法
 
 - 占位：下拉框里的 `YOLO26`、`Grounded SAM`、`VLM 区域提议` 目前只会被记录。
-- 当前实际执行：`placeholder_detector`。
+- 当前实际执行：`PlaceholderDetector`。
 - 未接入：YOLO26 检测。
 - 未接入：Grounding DINO / Grounded SAM 开放词汇检测。
 - 未接入：VLM 区域提议。
@@ -108,7 +119,7 @@
 ### 分割算法
 
 - 占位：下拉框里的 `SAM2`、`YOLO26 Seg`、`Mask Refiner` 目前只会被记录。
-- 当前实际执行：`placeholder_segmenter`。
+- 当前实际执行：`PlaceholderSegmenter`。
 - 未接入：SAM/SAM2 mask 生成。
 - 未接入：YOLO26 segmentation。
 - 未接入：mask 边缘精修。
@@ -119,9 +130,7 @@
 
 - 占位：OCR 下拉框目前只会被记录。
 - 当前实际执行：没有真实 OCR。
-- 未接入：PaddleOCR。
-- 未接入：docTR。
-- 未接入：VLM OCR。
+- 未接入：PaddleOCR、docTR、VLM OCR。
 - 未接入：文字区域保护。
 - 未接入：文字重新排版。
 - 未接入：文字内容回归检查。
@@ -138,18 +147,16 @@
 ### 风格替换
 
 - 占位：下拉框里的 `ControlNet + IPAdapter`、`参数化 UI 重绘`、`资产库替换` 目前只会被记录。
-- 当前实际执行：`placeholder_style_adapter`。
-- 未接入：ControlNet。
-- 未接入：IPAdapter。
-- 未接入：LoRA。
-- 未接入：ComfyUI workflow。
+- 当前实际执行：`PlaceholderStyleAdapter`。
+- 未接入：ControlNet、IPAdapter、LoRA、ComfyUI workflow。
 - 未接入：参数化按钮/卡片/表单控件重绘。
 - 未接入：图标资产库替换。
 - 未接入：色板和 design token 自动应用。
 
 ### 合成
 
-- 占位：`06_compose` 当前只是复制底图作为 final image。
+- 占位：`06_compose` 当前仍是复制底图作为 final image。
+- 已接入：合成意图预览。
 - 未接入：真实图层合成。
 - 未接入：根据 bbox 放回替换元素。
 - 未接入：透明通道混合。
@@ -190,10 +197,9 @@
 
 ## 下一批建议优先完成
 
-1. 接入真实图片读写能力，支持 PNG/JPG 上的 bbox 可视化。
-2. 在 `02_detect` 增加一个简单可视化检测框输出。
-3. 在 `03_segment` 增加真实 mask 文件格式，即使先用矩形 mask。
-4. 在 `06_compose` 增加基础 PIL 合成功能。
-5. 增加 OCR 文字保护占位层，防止后续生成模型破坏文字。
-6. 再接第一个真实模型，优先建议从检测或分割开始。
+1. 增加基础图片处理库，例如 Pillow，用于真实 PNG/JPG 读写和简单合成。
+2. 让矩形 mask 产出真实 raster mask 文件，而不仅是 JSON。
+3. 增加 OCR 文字保护占位层，防止后续生成模型破坏文字。
+4. 接入第一个真实模型，优先建议从检测或分割开始。
+5. 增加运行历史列表和 run 详情页。
 
