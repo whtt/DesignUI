@@ -113,7 +113,9 @@
 - Completed: added `docs/MODEL_SETUP.md` and `scripts/download_sam2_tiny.py` for local checkpoint setup.
 - Completed: `03_segment/segmentation_manifest.json` now records `model` and `fallback` metadata.
 - Completed: when SAM2 dependencies, checkpoint, or device setup fail, the pipeline falls back to `PlaceholderSegmenter` and still completes.
-- Current local status: this machine does not currently have `sam2` or `torch` installed, so validation uses the fallback path.
+- Completed local deployment: `.venv` uses Python 3.10 with CPU PyTorch and SAM2 installed.
+- Completed local deployment: `models/sam2/sam2.1_hiera_tiny.pt` is downloaded locally and ignored by Git.
+- Verified local run: UI and CLI can use `actual_adapter = sam2_tiny_segmenter`, `device = cpu`, `fallback = null`.
 
 ### 文档
 

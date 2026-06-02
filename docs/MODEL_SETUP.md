@@ -32,20 +32,63 @@ $env:DESIGNUI_SAM2_DEVICE="auto"
 
 SAM2 is not included in `requirements.txt` because PyTorch install commands differ by machine.
 
-Typical CPU-oriented setup:
+Recommended local CPU-oriented setup on this Windows machine:
 
 ```powershell
-pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
-pip install git+https://github.com/facebookresearch/sam2.git
-python scripts/download_sam2_tiny.py
+py -3.10 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install --upgrade pip
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+```
+
+Install SAM2 from GitHub:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install git+https://github.com/facebookresearch/sam2.git
+```
+
+If `git clone` times out, download the GitHub zip and install it locally:
+
+```powershell
+mkdir external
+Invoke-WebRequest -Uri "https://github.com/facebookresearch/sam2/archive/refs/heads/main.zip" -OutFile external\sam2-main.zip
+Expand-Archive -LiteralPath external\sam2-main.zip -DestinationPath external -Force
+.\.venv\Scripts\python.exe -m pip install -e external\sam2-main
+```
+
+Download the tiny checkpoint:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\download_sam2_tiny.py
 ```
 
 On Windows, the SAM2 project recommends WSL with Ubuntu for installation. CPU inference may be slow, but the project will fall back safely if SAM2 cannot run.
 
+### Run The UI With SAM2 Enabled
+
+Use the virtual environment Python, not the global Python:
+
+```powershell
+.\.venv\Scripts\python.exe -B -m ui_auto_gen.cli serve --port 8765
+```
+
+Then choose `SAM2` in the segmentation dropdown.
+
 ### Smoke Test
 
 ```powershell
-python -B -m ui_auto_gen.cli run --config configs\sample_sam2_job.json --run-id sam2_tiny_smoke
+.\.venv\Scripts\python.exe -B -m ui_auto_gen.cli run --config configs\sample_sam2_job.json --run-id sam2_tiny_smoke
 ```
 
 If SAM2 is not installed yet, this command should still complete with `actual_adapter = placeholder_segmenter` and a recorded fallback reason.
+
+## Current Local Deployment
+
+As of the latest local deployment:
+
+- Python runtime: `.venv` created with Python 3.10.
+- PyTorch: CPU build installed.
+- CUDA: unavailable on this machine.
+- SAM2: installed from the GitHub zip under `external/sam2-main`.
+- Checkpoint: `models/sam2/sam2.1_hiera_tiny.pt`.
+- Verified run: `actual_adapter = sam2_tiny_segmenter`, `device = cpu`, `fallback = null`.

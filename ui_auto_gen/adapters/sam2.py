@@ -70,6 +70,7 @@ class Sam2TinySegmenter(SegmenterAdapter):
         predictor_cls = getattr(predictor_module, "SAM2ImagePredictor")
 
         device = self._resolve_device(torch)
+        self.model_metadata["device"] = device
         model = build_sam2(self.settings.model_cfg, str(self.settings.checkpoint), device=device)
         predictor = predictor_cls(model)
         image = load_rgba_image(base_image, width=image_size[0], height=image_size[1]).convert("RGB")
