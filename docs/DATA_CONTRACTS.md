@@ -28,6 +28,15 @@ All contracts include a `schema_version` field. Breaking changes should incremen
   "positive_rules": "Keep layout and text clear.",
   "negative_rules": "No blurry text or broken spacing.",
   "reference_image": "workspace/ui_jobs/job_x/inputs/reference_image.png",
+  "manual_regions": [
+    {
+      "id": "manual_001",
+      "name": "primary button",
+      "type_hint": "button",
+      "bbox_norm": [0.12, 0.18, 0.34, 0.28],
+      "source": "manual_selection"
+    }
+  ],
   "algorithms": {
     "detector": "placeholder_detector",
     "segmenter": "placeholder_segmenter",
@@ -97,6 +106,7 @@ All contracts include a `schema_version` field. Breaking changes should incremen
   "schema_version": "1.0",
   "requested_algorithm": "yolo26",
   "actual_adapter": "placeholder_detector",
+  "manual_regions_used": true,
   "debug_artifacts": {
     "detection_preview": "02_detect/detection_preview.png"
   },
@@ -107,7 +117,7 @@ All contracts include a `schema_version` field. Breaking changes should incremen
       "label": "button",
       "bbox": [64, 64, 256, 128],
       "confidence": 0.5,
-      "source": "placeholder_detector"
+      "source": "manual_selection"
     }
   ]
 }

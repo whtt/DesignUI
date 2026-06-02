@@ -27,7 +27,7 @@ This document describes the public product capabilities DesignUI should eventual
 Users should be able to define target elements in several ways:
 
 - Text prompt: "buttons, cards, avatars, charts".
-- Manual rectangle selection on the image.
+- Manual rectangle selection on the image. Current version supports this as the first correction UI.
 - Manual polygon/lasso selection.
 - Click-to-select detected elements.
 - Brush-based mask correction.
@@ -97,4 +97,3 @@ Manual selection is important because model detection will not always be reliabl
 - Perfect UI-to-code reconstruction.
 - Fully autonomous visual judgment.
 - Replacing a human designer.
-

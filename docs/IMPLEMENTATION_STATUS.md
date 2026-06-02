@@ -13,6 +13,8 @@
 - 已完成：需要处理的元素输入。
 - 已完成：底图来源选择：示例底图、上传底图、文生图占位。
 - 已完成：参考图上传和预览。
+- 已完成：底图预览上的手动矩形圈选。
+- 已完成：手动框列表、命名和删除。
 - 已完成：检测、分割、OCR、风格替换、自审算法选择。
 - 已完成：保持原布局、保留文字开关。
 - 已完成：一键运行。
@@ -31,6 +33,7 @@
 - 已完成：`GET /` 返回 UI 页面。
 - 已完成：`POST /api/run` 接收 UI 表单数据。
 - 已完成：将 UI 表单数据转换为 job config。
+- 已完成：保存 `manual_regions` 到 job config。
 - 已完成：保存上传底图。
 - 已完成：保存上传参考图。
 - 已完成：文生图占位模式生成 SVG 底图。
@@ -45,6 +48,7 @@
 - 已完成：`00_ingest` 读取并复制底图。
 - 已完成：`01_plan` 将元素提示转换为结构化元素计划。
 - 已完成：`02_detect` 生成检测 manifest。
+- 已完成：`02_detect` 在存在手动框时优先使用手动框生成 detections。
 - 已完成：`03_segment` 生成 mask manifest。
 - 已完成：`04_cutout` 生成 cutout manifest。
 - 已完成：`05_style` 生成 styled asset manifest。
@@ -122,6 +126,7 @@
 
 - 占位：下拉框里的 `YOLO26`、`Grounded SAM`、`VLM 区域提议` 目前只会被记录。
 - 当前实际执行：`PlaceholderDetector`。
+- 已接入：手动矩形圈选优先于占位检测框。
 - 未接入：YOLO26 检测。
 - 未接入：Grounding DINO / Grounded SAM 开放词汇检测。
 - 未接入：VLM 区域提议。
@@ -209,8 +214,8 @@
 
 ## 下一批建议优先完成
 
-1. 增加手动矩形圈选和 correction UI。
-2. 增加 OCR 文字保护占位层，防止后续生成模型破坏文字。
+1. 增加 OCR 文字保护占位层，防止后续生成模型破坏文字。
+2. 扩展手动 correction UI：polygon/lasso/brush mask。
 3. 接入第一个真实模型，优先建议从检测或分割开始。
 4. 增加运行历史列表和 run 详情页。
 5. 增加背景修复占位图和 inpainting adapter 接口。

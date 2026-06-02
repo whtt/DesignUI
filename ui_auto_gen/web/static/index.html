@@ -41,6 +41,15 @@
             <input id="elementHints" type="text" placeholder="例如：按钮, 统计卡片, 用户头像, 图标, 图表" />
           </label>
 
+          <section class="manual-panel field-wide">
+            <header>
+              <span>手动圈选</span>
+              <button id="clearManualRegions" class="small-button" type="button">清空</button>
+            </header>
+            <p>在右侧底图预览上拖拽矩形。存在手动框时，检测阶段会优先使用这些区域。</p>
+            <div id="manualRegionList" class="manual-region-list">暂无手动框</div>
+          </section>
+
           <fieldset class="field field-wide segmented-field">
             <legend>底图来源</legend>
             <div class="segmented">
@@ -119,8 +128,11 @@
       <section class="result-panel">
         <div class="preview-strip">
           <div class="preview-box">
-            <span>底图预览</span>
-            <img id="basePreview" alt="底图预览" src="/static/sample-thumb.svg" />
+            <span>底图预览 / 可拖拽圈选</span>
+            <div id="selectionSurface" class="selection-surface">
+              <img id="basePreview" alt="底图预览" src="/static/sample-thumb.svg" draggable="false" />
+              <div id="selectionOverlay" class="selection-overlay"></div>
+            </div>
           </div>
           <div class="preview-box">
             <span>参考图预览</span>

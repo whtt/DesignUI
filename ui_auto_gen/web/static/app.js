@@ -7,9 +7,15 @@ const summaryLink = document.querySelector("#summaryLink");
 const baseImageInput = document.querySelector("#baseImage");
 const referenceImageInput = document.querySelector("#referenceImage");
 const basePreview = document.querySelector("#basePreview");
+const selectionSurface = document.querySelector("#selectionSurface");
+const selectionOverlay = document.querySelector("#selectionOverlay");
+const manualRegionList = document.querySelector("#manualRegionList");
+const clearManualRegionsButton = document.querySelector("#clearManualRegions");
 const stageDetailText = document.querySelector("#stageDetailText");
 let referencePreview = document.querySelector("#referencePreview");
 let latestRun = null;
+let manualRegions = [];
+let activeSelection = null;
 
 const debugTargets = {
   detection_preview: {
@@ -39,6 +45,16 @@ baseImageInput.addEventListener("change", async () => {
   if (!file) return;
   basePreview.src = await fileToDataUrl(file);
   document.querySelector('input[name="baseMode"][value="upload"]').checked = true;
+  clearManualRegions();
+});
+
+document.querySelectorAll('input[name="baseMode"]').forEach((input) => {
+  input.addEventListener("change", () => {
+    if (input.value === "sample" && input.checked) {
+      basePreview.src = "/static/sample-thumb.svg";
+    }
+    clearManualRegions();
+  });
 });
 
 referenceImageInput.addEventListener("change", async () => {
@@ -52,6 +68,51 @@ referenceImageInput.addEventListener("change", async () => {
   img.id = "referencePreview";
   referencePreview = img;
 });
+
+basePreview.addEventListener("load", renderManualRegions);
+window.addEventListener("resize", renderManualRegions);
+
+selectionSurface.addEventListener("pointerdown", (event) => {
+  const point = pointerToNorm(event);
+  if (!point) return;
+  event.preventDefault();
+  activeSelection = {
+    start: point,
+    end: point,
+    element: document.createElement("div"),
+  };
+  activeSelection.element.className = "manual-region-box active";
+  selectionOverlay.appendChild(activeSelection.element);
+  selectionSurface.setPointerCapture(event.pointerId);
+  updateActiveSelection();
+});
+
+selectionSurface.addEventListener("pointermove", (event) => {
+  if (!activeSelection) return;
+  const point = pointerToNorm(event);
+  if (!point) return;
+  activeSelection.end = point;
+  updateActiveSelection();
+});
+
+selectionSurface.addEventListener("pointerup", (event) => {
+  if (!activeSelection) return;
+  const point = pointerToNorm(event);
+  if (point) activeSelection.end = point;
+  const bboxNorm = normalizedSelection(activeSelection.start, activeSelection.end);
+  activeSelection.element.remove();
+  activeSelection = null;
+  selectionSurface.releasePointerCapture(event.pointerId);
+  if (bboxNorm[2] - bboxNorm[0] < 0.01 || bboxNorm[3] - bboxNorm[1] < 0.01) return;
+  addManualRegion(bboxNorm);
+});
+
+selectionSurface.addEventListener("pointercancel", () => {
+  if (activeSelection?.element) activeSelection.element.remove();
+  activeSelection = null;
+});
+
+clearManualRegionsButton.addEventListener("click", clearManualRegions);
 
 stageList.addEventListener("click", (event) => {
   const item = event.target.closest("li");
@@ -114,6 +175,12 @@ async function collectPayload() {
     positiveRules: valueOf("#positiveRules"),
     negativeRules: valueOf("#negativeRules"),
     elementHints: valueOf("#elementHints"),
+    manualRegions: manualRegions.map((region) => ({
+      id: region.id,
+      name: region.name,
+      type_hint: region.type_hint,
+      bbox_norm: region.bbox_norm,
+    })),
     baseMode,
     baseImage: baseFile ? await filePayload(baseFile) : null,
     referenceImage: referenceFile ? await filePayload(referenceFile) : null,
@@ -127,6 +194,136 @@ async function collectPayload() {
       review: valueOf("#review"),
     },
   };
+}
+
+function addManualRegion(bboxNorm) {
+  const index = manualRegions.length + 1;
+  const id = `manual_${String(index).padStart(3, "0")}`;
+  manualRegions.push({
+    id,
+    name: id,
+    type_hint: "manual",
+    bbox_norm: bboxNorm,
+  });
+  renderManualRegions();
+}
+
+function clearManualRegions() {
+  manualRegions = [];
+  renderManualRegions();
+}
+
+function renderManualRegions() {
+  renderManualOverlay();
+  renderManualList();
+}
+
+function renderManualOverlay() {
+  selectionOverlay.querySelectorAll(".manual-region-box:not(.active)").forEach((element) => element.remove());
+  const contentRect = imageContentRect();
+  if (!contentRect) return;
+  const surfaceRect = selectionSurface.getBoundingClientRect();
+  manualRegions.forEach((region, index) => {
+    const element = document.createElement("div");
+    element.className = "manual-region-box";
+    element.textContent = region.name;
+    positionRegionElement(element, region.bbox_norm, contentRect, surfaceRect);
+    selectionOverlay.appendChild(element);
+  });
+}
+
+function renderManualList() {
+  if (!manualRegions.length) {
+    manualRegionList.textContent = "暂无手动框";
+    return;
+  }
+  manualRegionList.innerHTML = "";
+  manualRegions.forEach((region, index) => {
+    const row = document.createElement("div");
+    row.className = "manual-region-row";
+
+    const nameInput = document.createElement("input");
+    nameInput.value = region.name;
+    nameInput.setAttribute("aria-label", "手动框名称");
+    nameInput.addEventListener("input", () => {
+      region.name = nameInput.value.trim() || region.id;
+      region.type_hint = region.name;
+      renderManualOverlay();
+    });
+
+    const deleteButton = document.createElement("button");
+    deleteButton.type = "button";
+    deleteButton.textContent = "删除";
+    deleteButton.addEventListener("click", () => {
+      manualRegions.splice(index, 1);
+      renderManualRegions();
+    });
+
+    row.appendChild(nameInput);
+    row.appendChild(deleteButton);
+    manualRegionList.appendChild(row);
+  });
+}
+
+function pointerToNorm(event) {
+  const rect = imageContentRect();
+  if (!rect) return null;
+  const x = clamp((event.clientX - rect.left) / rect.width, 0, 1);
+  const y = clamp((event.clientY - rect.top) / rect.height, 0, 1);
+  return { x, y };
+}
+
+function imageContentRect() {
+  const rect = basePreview.getBoundingClientRect();
+  const naturalWidth = basePreview.naturalWidth || rect.width;
+  const naturalHeight = basePreview.naturalHeight || rect.height;
+  if (!rect.width || !rect.height || !naturalWidth || !naturalHeight) return null;
+
+  const elementRatio = rect.width / rect.height;
+  const imageRatio = naturalWidth / naturalHeight;
+  let width = rect.width;
+  let height = rect.height;
+  let left = rect.left;
+  let top = rect.top;
+  if (elementRatio > imageRatio) {
+    width = rect.height * imageRatio;
+    left = rect.left + (rect.width - width) / 2;
+  } else {
+    height = rect.width / imageRatio;
+    top = rect.top + (rect.height - height) / 2;
+  }
+  return { left, top, width, height };
+}
+
+function updateActiveSelection() {
+  if (!activeSelection) return;
+  const bboxNorm = normalizedSelection(activeSelection.start, activeSelection.end);
+  const contentRect = imageContentRect();
+  if (!contentRect) return;
+  const surfaceRect = selectionSurface.getBoundingClientRect();
+  positionRegionElement(activeSelection.element, bboxNorm, contentRect, surfaceRect);
+}
+
+function normalizedSelection(start, end) {
+  return [
+    Math.min(start.x, end.x),
+    Math.min(start.y, end.y),
+    Math.max(start.x, end.x),
+    Math.max(start.y, end.y),
+  ];
+}
+
+function positionRegionElement(element, bboxNorm, contentRect, surfaceRect) {
+  const left = contentRect.left - surfaceRect.left + bboxNorm[0] * contentRect.width;
+  const top = contentRect.top - surfaceRect.top + bboxNorm[1] * contentRect.height;
+  const width = (bboxNorm[2] - bboxNorm[0]) * contentRect.width;
+  const height = (bboxNorm[3] - bboxNorm[1]) * contentRect.height;
+  Object.assign(element.style, {
+    left: `${left}px`,
+    top: `${top}px`,
+    width: `${width}px`,
+    height: `${height}px`,
+  });
 }
 
 function renderDebugImages(debugImages) {
@@ -208,4 +405,8 @@ function fileToDataUrl(file) {
 
 function withCacheBust(url) {
   return `${url}?t=${Date.now()}`;
+}
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
 }

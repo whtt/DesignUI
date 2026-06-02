@@ -21,7 +21,8 @@ class DetectStage(PipelineStage):
         height = ingest_manifest["base_image"].get("height") or 540
         requested_algorithm = context.config.get("algorithms", {}).get("detector", "placeholder_detector")
         adapter = PlaceholderDetector()
-        detections = adapter.detect(plan_manifest["elements"], width, height)
+        manual_regions = context.config.get("manual_regions", [])
+        detections = adapter.detect(plan_manifest["elements"], width, height, manual_regions)
         preview_path = paths.artifact("detection_preview.png")
         write_detection_preview(
             base_image=Path(ingest_manifest["base_image"]["run_path"]),
@@ -34,6 +35,7 @@ class DetectStage(PipelineStage):
             "schema_version": "1.0",
             "requested_algorithm": requested_algorithm,
             "actual_adapter": adapter.adapter_name,
+            "manual_regions_used": bool(manual_regions),
             "detections": detections,
             "debug_artifacts": {
                 "detection_preview": str(preview_path),

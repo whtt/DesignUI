@@ -144,7 +144,8 @@ def _create_job_config(payload: dict[str, Any]) -> Path:
 
     base_image_path = _resolve_base_image(payload, input_root)
     reference_image_path = _save_data_url(payload.get("referenceImage"), input_root, "reference_image")
-    target_elements = _target_elements_from_payload(payload)
+    manual_regions = _manual_regions_from_payload(payload)
+    target_elements = _target_elements_from_payload(payload, manual_regions)
     algorithms = payload.get("algorithms", {})
 
     config = {
@@ -155,6 +156,7 @@ def _create_job_config(payload: dict[str, Any]) -> Path:
         "positive_rules": payload.get("positiveRules", ""),
         "negative_rules": payload.get("negativeRules", ""),
         "reference_image": str(reference_image_path) if reference_image_path else None,
+        "manual_regions": manual_regions,
         "target_elements": target_elements,
         "algorithms": {
             "detector": algorithms.get("detector", "placeholder_detector"),
@@ -194,7 +196,20 @@ def _resolve_base_image(payload: dict[str, Any], input_root: Path) -> Path:
     return REPO_ROOT / "examples" / "base_placeholder.svg"
 
 
-def _target_elements_from_payload(payload: dict[str, Any]) -> list[dict[str, Any]]:
+def _target_elements_from_payload(payload: dict[str, Any], manual_regions: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    if manual_regions:
+        return [
+            {
+                "id": region["id"],
+                "name": region["name"],
+                "type_hint": region.get("type_hint", "manual"),
+                "action": "replace_style",
+                "style": payload.get("prompt", ""),
+                "keep_text": bool(payload.get("keepText", True)),
+            }
+            for region in manual_regions
+        ]
+
     hints = payload.get("elementHints", "")
     names = [item.strip() for item in hints.replace(",", "\n").splitlines() if item.strip()]
     if not names:
@@ -211,6 +226,42 @@ def _target_elements_from_payload(payload: dict[str, Any]) -> list[dict[str, Any
         }
         for index, name in enumerate(names, start=1)
     ]
+
+
+def _manual_regions_from_payload(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    raw_regions = payload.get("manualRegions", [])
+    if not isinstance(raw_regions, list):
+        return []
+
+    regions = []
+    for index, region in enumerate(raw_regions, start=1):
+        if not isinstance(region, dict):
+            continue
+        bbox_norm = region.get("bbox_norm")
+        if not isinstance(bbox_norm, list) or len(bbox_norm) != 4:
+            continue
+        x1, y1, x2, y2 = _normalize_bbox_norm(bbox_norm)
+        if x2 - x1 < 0.005 or y2 - y1 < 0.005:
+            continue
+        name = str(region.get("name") or f"manual region {index}").strip()
+        region_id = _safe_id(str(region.get("id") or name), index)
+        regions.append(
+            {
+                "id": region_id,
+                "name": name,
+                "type_hint": str(region.get("type_hint") or "manual"),
+                "bbox_norm": [x1, y1, x2, y2],
+                "source": "manual_selection",
+            }
+        )
+    return regions
+
+
+def _normalize_bbox_norm(values: list[Any]) -> tuple[float, float, float, float]:
+    x1, y1, x2, y2 = [max(0.0, min(1.0, float(value))) for value in values]
+    left, right = sorted([x1, x2])
+    top, bottom = sorted([y1, y2])
+    return left, top, right, bottom
 
 
 def _save_data_url(value: Any, input_root: Path, stem: str) -> Path | None:

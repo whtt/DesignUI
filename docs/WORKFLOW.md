@@ -44,7 +44,9 @@ Finds candidate UI elements from the plan.
 
 Current behavior:
 
-- Creates deterministic placeholder boxes.
+- Uses manual rectangle selections when present.
+- Otherwise creates deterministic placeholder boxes.
+- Writes raster detection previews.
 
 Future upgrades:
 
