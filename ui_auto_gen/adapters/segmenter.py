@@ -17,6 +17,7 @@ class SegmenterAdapter(ABC):
         detections: list[dict[str, Any]],
         masks_dir: Path,
         image_size: tuple[int, int],
+        base_image: Path | None = None,
     ) -> list[dict[str, Any]]:
         raise NotImplementedError
 
@@ -29,6 +30,7 @@ class PlaceholderSegmenter(SegmenterAdapter):
         detections: list[dict[str, Any]],
         masks_dir: Path,
         image_size: tuple[int, int],
+        base_image: Path | None = None,
     ) -> list[dict[str, Any]]:
         masks_dir.mkdir(parents=True, exist_ok=True)
         masks = []

@@ -158,7 +158,15 @@ All contracts include a `schema_version` field. Breaking changes should incremen
 {
   "schema_version": "1.0",
   "requested_algorithm": "sam2",
-  "actual_adapter": "placeholder_segmenter",
+  "actual_adapter": "sam2_tiny_segmenter",
+  "model": {
+    "model_family": "sam2",
+    "model_size": "tiny",
+    "checkpoint": "models/sam2/sam2.1_hiera_tiny.pt",
+    "model_cfg": "configs/sam2.1/sam2.1_hiera_t.yaml",
+    "device": "cpu"
+  },
+  "fallback": null,
   "debug_artifacts": {
     "mask_preview": "03_segment/mask_preview.png"
   },
@@ -169,16 +177,20 @@ All contracts include a `schema_version` field. Breaking changes should incremen
       "mask_path": "03_segment/masks/mask_det_primary_buttons_001.json",
       "mask_png_path": "03_segment/masks/mask_det_primary_buttons_001.png",
       "bbox": [64, 64, 256, 128],
-      "confidence": 0.5,
-      "source": "placeholder_segmenter",
-      "placeholder_visual": "colored_rectangle_mask",
-      "future_adapter": "sam_or_instance_segmentation"
+      "confidence": 0.91,
+      "source": "sam2_tiny_segmenter",
+      "model": {
+        "model_family": "sam2",
+        "model_size": "tiny"
+      }
     }
   ]
 }
 ```
 
 `placeholder_visual` describes how the current non-model output is made visible in previews. `future_adapter` names the adapter family expected to replace the placeholder.
+
+When SAM2 cannot run, `actual_adapter` becomes `placeholder_segmenter` and `fallback` records `requested_adapter`, `fallback_adapter`, and `reason`.
 
 ## Style Manifest
 

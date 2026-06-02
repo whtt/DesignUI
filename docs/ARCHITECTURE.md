@@ -101,7 +101,9 @@ adapters/detector.py
 adapters/ocr.py
   OcrProtectAdapter -> PlaceholderOcrProtector -> future PaddleOcrProtector / VlmOcrProtector
 adapters/segmenter.py
-  SegmenterAdapter -> PlaceholderSegmenter -> future SamSegmenter / YoloSegmenter
+  SegmenterAdapter -> PlaceholderSegmenter
+adapters/sam2.py
+  SegmenterAdapter -> Sam2TinySegmenter -> future larger SAM2 variants
 adapters/background.py
   BackgroundRepairAdapter -> PlaceholderBackgroundRepair -> future InpaintingRepairAdapter
 adapters/style.py
@@ -111,6 +113,8 @@ adapters/reviewer.py
 ```
 
 Only the adapter implementation should know model-specific details. The stage output contract should remain stable.
+
+SAM2 is optional. `SegmentStage` attempts `Sam2TinySegmenter` only when `algorithms.segmenter` requests `sam2`; otherwise it uses the placeholder segmenter. If SAM2 dependencies, checkpoint, device, or model initialization fail, the stage records a fallback reason and completes with placeholder masks.
 
 ## Visual Debug Artifacts
 

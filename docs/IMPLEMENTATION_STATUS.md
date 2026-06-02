@@ -106,6 +106,15 @@
 - Completed: UI now displays text protection and background repair previews as independent debug cards.
 - Still not connected: real OCR text recognition, real text content regression, and real inpainting models.
 
+### SAM2 tiny segmentation
+
+- Completed: added optional `Sam2TinySegmenter` for `algorithms.segmenter = sam2`.
+- Completed: added `configs/sample_sam2_job.json` for SAM2-requested smoke tests.
+- Completed: added `docs/MODEL_SETUP.md` and `scripts/download_sam2_tiny.py` for local checkpoint setup.
+- Completed: `03_segment/segmentation_manifest.json` now records `model` and `fallback` metadata.
+- Completed: when SAM2 dependencies, checkpoint, or device setup fail, the pipeline falls back to `PlaceholderSegmenter` and still completes.
+- Current local status: this machine does not currently have `sam2` or `torch` installed, so validation uses the fallback path.
+
 ### 文档
 
 - 已完成：需求文档 `docs/PRD.md`。

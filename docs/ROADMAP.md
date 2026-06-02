@@ -17,8 +17,9 @@
 - Manual rectangle selection and correction UI.
 - Placeholder OCR/text protection stage.
 - Placeholder background repair stage.
+- Optional SAM2.1 tiny segmenter with safe placeholder fallback.
 - Future polygon/lasso/brush mask correction.
-- Real OCR adapter.
+- Future real OCR adapter.
 - YOLO26 detector adapter for known UI classes.
 - Grounded detector adapter for open-vocabulary prompts.
 - SAM/SAM2 segmenter adapter.
