@@ -403,6 +403,61 @@ input[type="file"] {
   background: #fff7ed;
 }
 
+.placeholder-guide {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 22px;
+  padding: 14px;
+  border: 1px solid #bfdbfe;
+  border-radius: var(--radius);
+  background: #eff6ff;
+}
+
+.placeholder-guide header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.placeholder-guide header span {
+  color: #1e3a8a;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.placeholder-guide small {
+  color: #475569;
+  font-size: 12px;
+}
+
+.placeholder-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.placeholder-item {
+  display: grid;
+  gap: 4px;
+  min-height: 66px;
+  padding: 10px;
+  border: 1px solid rgba(37, 99, 235, 0.16);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.placeholder-item b {
+  color: #0f172a;
+  font-size: 13px;
+}
+
+.placeholder-item span {
+  color: #475569;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .final-output {
   margin: 0;
 }
@@ -487,6 +542,7 @@ input[type="file"] {
   .form-grid,
   .preview-strip,
   .debug-gallery,
+  .placeholder-grid,
   .stage-list {
     grid-template-columns: 1fr;
   }

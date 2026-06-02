@@ -89,6 +89,13 @@
 - 已完成：基础 alpha paste 合成，输出 `06_compose/final.png`。
 - 已完成：最终图不再只是复制底图，而是会贴回 placeholder styled assets。
 
+### 占位可视化说明
+
+- 已完成：`03_segment/mask_preview.png` 会给目标区域加半透明彩色涂层，并标注 `INSTANCE SEG TODO`，明确表示这里未来会由实例分割模型生成精细 mask。
+- 已完成：`05_style` 的 placeholder styled asset 会渲染 emoji / sticker 标记，明确表示这里未来会由风格迁移、参数化重绘或资产库替换生成真实素材。
+- 已完成：分割和风格阶段的 manifest 已新增 `placeholder_visual` 和 `future_adapter` 字段，记录当前占位表现和未来替换方向。
+- 已完成：UI 已新增“待接入模型说明”区域，解释实例分割、风格迁移、OCR 保护和背景修复目前的占位含义。
+
 ### 文档
 
 - 已完成：需求文档 `docs/PRD.md`。

@@ -54,6 +54,8 @@ class PlaceholderStyleAdapter(StyleAdapter):
                 label=element.get("name", element_id),
                 fill=(*color, 178),
                 border=(*color, 255),
+                marker=_style_marker(len(styled_assets)),
+                marker_label="STYLE TODO",
             )
             save_png(asset_png, asset_png_path)
             payload = {
@@ -65,7 +67,9 @@ class PlaceholderStyleAdapter(StyleAdapter):
                 "requested_style": element.get("style", ""),
                 "global_style": plan_manifest.get("global_style", {}),
                 "generated_asset_path": str(asset_png_path),
-                "note": "Placeholder styled PNG asset. Future implementation should write generated image or vector asset.",
+                "placeholder_visual": "emoji_style_transfer",
+                "future_adapter": "style_transfer_or_parameterized_renderer",
+                "note": "Placeholder styled PNG asset with emoji marker. Future implementation should write generated image or vector asset.",
             }
             write_json(asset_path, payload)
             styled_assets.append(
@@ -77,6 +81,8 @@ class PlaceholderStyleAdapter(StyleAdapter):
                     "generated_asset_path": str(asset_png_path),
                     "bbox": cutout["bbox"],
                     "source": self.adapter_name,
+                    "placeholder_visual": "emoji_style_transfer",
+                    "future_adapter": "style_transfer_or_parameterized_renderer",
                 }
             )
         return styled_assets
@@ -85,3 +91,8 @@ class PlaceholderStyleAdapter(StyleAdapter):
 def _style_color(index: int) -> tuple[int, int, int]:
     colors = [(96, 165, 250), (74, 222, 128), (251, 146, 60), (196, 181, 253), (45, 212, 191)]
     return colors[index % len(colors)]
+
+
+def _style_marker(index: int) -> str:
+    markers = ["\U0001f3a8", "\u2728", "\U0001f58c", "\U0001f4a0", "\U0001f9e9"]
+    return markers[index % len(markers)]

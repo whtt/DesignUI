@@ -63,6 +63,7 @@ Current behavior:
 - Writes placeholder mask manifests.
 - Writes rectangular grayscale mask PNG files.
 - Writes a raster mask preview.
+- Tints the target region and labels it `INSTANCE SEG TODO` so users can see where a future instance segmentation model will act.
 
 Future upgrades:
 
@@ -94,6 +95,7 @@ Creates replacement element artifacts.
 Current behavior:
 
 - Creates placeholder style artifacts.
+- Renders visible emoji/sticker markers into placeholder assets so users can distinguish future style-transfer output from a finished model result.
 
 Future upgrades:
 

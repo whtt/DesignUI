@@ -52,14 +52,37 @@ def cutout_from_mask(base: Image.Image, mask: Image.Image, bbox: list[int]) -> I
     return masked.crop(clamp_bbox(bbox, base_rgba.size))
 
 
-def placeholder_asset(size: tuple[int, int], label: str, fill: RGBA, border: RGBA) -> Image.Image:
+def placeholder_asset(
+    size: tuple[int, int],
+    label: str,
+    fill: RGBA,
+    border: RGBA,
+    marker: str | None = None,
+    marker_label: str | None = None,
+) -> Image.Image:
     width, height = size
     image = Image.new("RGBA", size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(image)
     radius = max(6, min(width, height) // 12)
     draw.rounded_rectangle((0, 0, width - 1, height - 1), radius=radius, fill=fill, outline=border, width=2)
+
+    if marker:
+        marker_font = _emoji_font(max(18, min(width, height) // 2))
+        marker_box = draw.textbbox((0, 0), marker, font=marker_font)
+        marker_width = marker_box[2] - marker_box[0]
+        marker_height = marker_box[3] - marker_box[1]
+        draw.text(
+            ((width - marker_width) / 2, max(2, (height - marker_height) / 2 - 8)),
+            marker,
+            fill=(15, 23, 42, 230),
+            font=marker_font,
+        )
+
+    if marker_label and height >= 42:
+        draw.text((10, 8), marker_label[:34], fill=(15, 23, 42, 235), font=_font())
+
     text = label[:32]
-    draw.text((10, max(8, height // 2 - 7)), text, fill=(30, 41, 59, 235), font=_font())
+    draw.text((10, max(8, height - 18)), text, fill=(30, 41, 59, 235), font=_font())
     return image
 
 
@@ -141,3 +164,17 @@ def _color(index: int) -> tuple[int, int, int]:
 def _font() -> ImageFont.ImageFont:
     return ImageFont.load_default()
 
+
+def _emoji_font(size: int) -> ImageFont.ImageFont:
+    candidates = [
+        Path("C:/Windows/Fonts/seguiemj.ttf"),
+        Path("C:/Windows/Fonts/segoeui.ttf"),
+        Path("C:/Windows/Fonts/arial.ttf"),
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            try:
+                return ImageFont.truetype(str(candidate), size=size)
+            except OSError:
+                continue
+    return ImageFont.load_default()

@@ -160,6 +160,31 @@
           <li data-stage="08_export">08 Export</li>
         </ol>
 
+        <section class="placeholder-guide">
+          <header>
+            <span>待接入模型说明</span>
+            <small>当前彩色标记是工程占位，用来说明后续模型会做什么。</small>
+          </header>
+          <div class="placeholder-grid">
+            <div class="placeholder-item">
+              <b>实例分割</b>
+              <span>彩色涂层表示未来 SAM / YOLO Seg 生成的精细 mask。</span>
+            </div>
+            <div class="placeholder-item">
+              <b>风格迁移</b>
+              <span>emoji 贴纸表示未来会被 ControlNet、IPAdapter 或参数化 UI 重绘替换。</span>
+            </div>
+            <div class="placeholder-item">
+              <b>OCR 保护</b>
+              <span>后续会锁定文字区域，避免生成模型破坏文字内容。</span>
+            </div>
+            <div class="placeholder-item">
+              <b>背景修复</b>
+              <span>后续会用 inpainting 修补被抠掉或替换后的底图区域。</span>
+            </div>
+          </div>
+        </section>
+
         <section class="debug-gallery">
           <article class="debug-card">
             <header>

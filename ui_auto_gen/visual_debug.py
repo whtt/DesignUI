@@ -37,7 +37,14 @@ def write_mask_preview(
     destination: Path,
 ) -> None:
     base = load_rgba_image(base_image, width, height)
-    save_png(draw_bbox_overlay(base, masks, "mask_id", translucent=True), destination)
+    items = [
+        {
+            **mask,
+            "preview_label": f"INSTANCE SEG TODO {index + 1}",
+        }
+        for index, mask in enumerate(masks)
+    ]
+    save_png(draw_bbox_overlay(base, items, "preview_label", translucent=True), destination)
 
 
 def write_composition_preview(

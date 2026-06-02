@@ -44,6 +44,16 @@ Manual selection is important because model detection will not always be reliabl
 - Identify reusable UI components.
 - Extract color, radius, shadow, stroke, and spacing tokens.
 
+## Placeholder Communication
+
+Early versions must make unfinished model integrations visually obvious:
+
+- Instance segmentation placeholders should tint the target area and clearly label the preview as a future mask/model step.
+- Style replacement placeholders should use an obvious marker, such as an emoji/sticker, instead of pretending to be final generated art.
+- OCR protection placeholders should explain that future text locks will protect detected text regions.
+- Background repair placeholders should explain that future inpainting will repair removed or replaced regions.
+- Placeholder metadata should identify the future adapter family that is expected to replace the placeholder.
+
 ## Raster Editing
 
 - Generate mask PNG files.

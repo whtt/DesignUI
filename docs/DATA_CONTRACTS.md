@@ -143,7 +143,34 @@ All contracts include a `schema_version` field. Breaking changes should incremen
       "mask_png_path": "03_segment/masks/mask_det_primary_buttons_001.png",
       "bbox": [64, 64, 256, 128],
       "confidence": 0.5,
-      "source": "placeholder_segmenter"
+      "source": "placeholder_segmenter",
+      "placeholder_visual": "colored_rectangle_mask",
+      "future_adapter": "sam_or_instance_segmentation"
+    }
+  ]
+}
+```
+
+`placeholder_visual` describes how the current non-model output is made visible in previews. `future_adapter` names the adapter family expected to replace the placeholder.
+
+## Style Manifest
+
+```json
+{
+  "schema_version": "1.0",
+  "requested_algorithm": "controlnet_ipadapter",
+  "actual_adapter": "placeholder_style_adapter",
+  "styled_assets": [
+    {
+      "asset_id": "styled_cutout_mask_det_primary_buttons_001",
+      "element_id": "primary_buttons",
+      "cutout_id": "cutout_mask_det_primary_buttons_001",
+      "asset_path": "05_style/styled_assets/styled_cutout_mask_det_primary_buttons_001.json",
+      "generated_asset_path": "05_style/styled_assets/styled_cutout_mask_det_primary_buttons_001.png",
+      "bbox": [64, 64, 256, 128],
+      "source": "placeholder_style_adapter",
+      "placeholder_visual": "emoji_style_transfer",
+      "future_adapter": "style_transfer_or_parameterized_renderer"
     }
   ]
 }

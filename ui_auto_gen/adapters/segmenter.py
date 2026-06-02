@@ -43,7 +43,9 @@ class PlaceholderSegmenter(SegmenterAdapter):
                 "shape": "rectangle",
                 "bbox": detection["bbox"],
                 "mask_png_path": str(mask_png_path),
-                "note": "Placeholder rectangle mask. Replace with raster or polygon mask later.",
+                "placeholder_visual": "colored_rectangle_mask",
+                "future_adapter": "sam_or_instance_segmentation",
+                "note": "Placeholder rectangle mask. UI previews tint this area to show where future instance segmentation masks will appear.",
             }
             write_json(mask_path, mask_payload)
             masks.append(
@@ -55,6 +57,8 @@ class PlaceholderSegmenter(SegmenterAdapter):
                     "bbox": detection["bbox"],
                     "confidence": detection.get("confidence", 0.0),
                     "source": self.adapter_name,
+                    "placeholder_visual": "colored_rectangle_mask",
+                    "future_adapter": "sam_or_instance_segmentation",
                 }
             )
         return masks
