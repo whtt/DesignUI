@@ -96,6 +96,16 @@
 - 已完成：分割和风格阶段的 manifest 已新增 `placeholder_visual` 和 `future_adapter` 字段，记录当前占位表现和未来替换方向。
 - 已完成：UI 已新增“待接入模型说明”区域，解释实例分割、风格迁移、OCR 保护和背景修复目前的占位含义。
 
+### OCR and background repair placeholders
+
+- Completed: added `02_ocr_protect`, which writes placeholder text-region manifests and `text_protect_preview.png`.
+- Completed: text protection regions are labeled `OCR LOCK TODO` and use `placeholder_visual = ocr_lock_tint`.
+- Completed: `06_compose` restores protected text regions from the source image after placeholder style assets are pasted.
+- Completed: added `04_background_repair`, which writes placeholder repair manifests, patch PNG files, and `background_repair_preview.png`.
+- Completed: background repair regions are labeled `INPAINT TODO` and use `placeholder_visual = inpaint_patch_marker`.
+- Completed: UI now displays text protection and background repair previews as independent debug cards.
+- Still not connected: real OCR text recognition, real text content regression, and real inpainting models.
+
 ### 文档
 
 - 已完成：需求文档 `docs/PRD.md`。
@@ -153,9 +163,9 @@
 ### OCR
 
 - 占位：OCR 下拉框目前只会被记录。
-- 当前实际执行：没有真实 OCR。
+- 当前实际执行：`PlaceholderOcrProtector`，会生成文字保护占位区域。
 - 未接入：PaddleOCR、docTR、VLM OCR。
-- 未接入：文字区域保护。
+- 已接入占位：文字区域保护 manifest、预览图，以及合成阶段原图恢复。
 - 未接入：文字重新排版。
 - 未接入：文字内容回归检查。
 
@@ -164,7 +174,8 @@
 - 已接入：`04_cutout` 会生成 cutout JSON 和透明 PNG。
 - 已接入：矩形 mask 下的 alpha cutout。
 - 已接入：透明 PNG 元素输出。
-- 未接入：背景 inpainting。
+- 已接入占位：背景修复 manifest、预览图和 placeholder patch。
+- 未接入：真实背景 inpainting。
 - 未接入：阴影分离。
 - 未接入：边缘羽化。
 
@@ -221,8 +232,8 @@
 
 ## 下一批建议优先完成
 
-1. 增加 OCR 文字保护占位层，防止后续生成模型破坏文字。
-2. 扩展手动 correction UI：polygon/lasso/brush mask。
-3. 接入第一个真实模型，优先建议从检测或分割开始。
-4. 增加运行历史列表和 run 详情页。
-5. 增加背景修复占位图和 inpainting adapter 接口。
+1. 扩展手动 correction UI：polygon/lasso/brush mask。
+2. 接入第一个真实模型，优先建议从分割或 OCR 开始。
+3. 增加运行历史列表和 run 详情页。
+4. 将背景修复占位升级为真实 inpainting adapter。
+5. 增加 OCR 文本内容回归检查。

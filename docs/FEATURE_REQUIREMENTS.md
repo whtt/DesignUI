@@ -53,6 +53,7 @@ Early versions must make unfinished model integrations visually obvious:
 - OCR protection placeholders should explain that future text locks will protect detected text regions.
 - Background repair placeholders should explain that future inpainting will repair removed or replaced regions.
 - Placeholder metadata should identify the future adapter family that is expected to replace the placeholder.
+- The final composition should preserve protected text regions even while upstream OCR is still a placeholder.
 
 ## Raster Editing
 
@@ -61,6 +62,8 @@ Early versions must make unfinished model integrations visually obvious:
 - Generate preview images for every major stage.
 - Support simple alpha compositing.
 - Support background repair placeholders.
+- Support source-image restoration for protected text regions.
+- Support visible inpainting placeholders before real background repair is available.
 - Future: real inpainting.
 - Future: edge feathering and matting.
 - Future: shadow separation.
@@ -77,6 +80,7 @@ Early versions must make unfinished model integrations visually obvious:
 
 - Check whether all requested elements were processed.
 - Check text readability.
+- Check whether text protection and background repair plans were recorded.
 - Check layout preservation.
 - Check style consistency.
 - Check visible artifacts such as dirty edges.

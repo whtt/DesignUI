@@ -87,11 +87,22 @@ def placeholder_asset(
 
 
 def draw_bbox_overlay(base: Image.Image, items: list[dict[str, Any]], label_key: str, translucent: bool = False) -> Image.Image:
+    return draw_bbox_overlay_with_palette(base, items, label_key, translucent=translucent)
+
+
+def draw_bbox_overlay_with_palette(
+    base: Image.Image,
+    items: list[dict[str, Any]],
+    label_key: str,
+    translucent: bool = False,
+    palette: list[tuple[int, int, int]] | None = None,
+) -> Image.Image:
     image = base.convert("RGBA").copy()
     overlay = Image.new("RGBA", image.size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(overlay)
     for index, item in enumerate(items):
-        color = _color(index)
+        colors = palette or [_color(index)]
+        color = colors[index % len(colors)]
         x1, y1, x2, y2 = clamp_bbox(item["bbox"], image.size)
         fill_alpha = 62 if translucent else 24
         draw.rectangle((x1, y1, x2, y2), fill=(*color, fill_alpha), outline=(*color, 255), width=3)
@@ -116,6 +127,16 @@ def paste_assets(base: Image.Image, assets: list[dict[str, Any]]) -> Image.Image
         x1, y1, x2, y2 = clamp_bbox(asset["bbox"], image.size)
         overlay = overlay.resize((x2 - x1, y2 - y1))
         image.alpha_composite(overlay, (x1, y1))
+    return image
+
+
+def restore_regions(target: Image.Image, source: Image.Image, regions: list[dict[str, Any]]) -> Image.Image:
+    image = target.convert("RGBA").copy()
+    source_rgba = source.convert("RGBA")
+    for region in regions:
+        x1, y1, x2, y2 = clamp_bbox(region["bbox"], image.size)
+        patch = source_rgba.crop((x1, y1, x2, y2))
+        image.alpha_composite(patch, (x1, y1))
     return image
 
 

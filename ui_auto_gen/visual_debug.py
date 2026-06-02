@@ -6,7 +6,7 @@ import mimetypes
 from pathlib import Path
 from typing import Any
 
-from ui_auto_gen.raster import draw_bbox_overlay, load_rgba_image, save_png
+from ui_auto_gen.raster import draw_bbox_overlay, draw_bbox_overlay_with_palette, load_rgba_image, save_png
 
 COLORS = ["#2563eb", "#16a34a", "#dc2626", "#9333ea", "#ea580c", "#0891b2"]
 
@@ -56,6 +56,60 @@ def write_composition_preview(
 ) -> None:
     base = load_rgba_image(base_image, width, height)
     save_png(draw_bbox_overlay(base, placed_assets, "asset_id"), destination)
+
+
+def write_text_protect_preview(
+    base_image: Path,
+    width: int,
+    height: int,
+    text_regions: list[dict[str, Any]],
+    destination: Path,
+) -> None:
+    base = load_rgba_image(base_image, width, height)
+    items = [
+        {
+            **region,
+            "preview_label": f"OCR LOCK TODO {index + 1}",
+        }
+        for index, region in enumerate(text_regions)
+    ]
+    save_png(
+        draw_bbox_overlay_with_palette(
+            base,
+            items,
+            "preview_label",
+            translucent=True,
+            palette=[(245, 158, 11), (217, 119, 6)],
+        ),
+        destination,
+    )
+
+
+def write_background_repair_preview(
+    base_image: Path,
+    width: int,
+    height: int,
+    repairs: list[dict[str, Any]],
+    destination: Path,
+) -> None:
+    base = load_rgba_image(base_image, width, height)
+    items = [
+        {
+            **repair,
+            "preview_label": f"INPAINT TODO {index + 1}",
+        }
+        for index, repair in enumerate(repairs)
+    ]
+    save_png(
+        draw_bbox_overlay_with_palette(
+            base,
+            items,
+            "preview_label",
+            translucent=True,
+            palette=[(244, 63, 94), (217, 70, 239), (14, 165, 233)],
+        ),
+        destination,
+    )
 
 
 def _write_overlay_svg(base_image: Path, width: int, height: int, overlays: list[str], destination: Path) -> None:

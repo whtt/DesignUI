@@ -125,6 +125,33 @@ All contracts include a `schema_version` field. Breaking changes should incremen
 
 `bbox` uses `[x1, y1, x2, y2]` pixel coordinates in the ingested base image coordinate system.
 
+## Text Protect Manifest
+
+```json
+{
+  "schema_version": "1.0",
+  "requested_algorithm": "placeholder_ocr",
+  "actual_adapter": "placeholder_ocr_protector",
+  "debug_artifacts": {
+    "text_protect_preview": "02_ocr_protect/text_protect_preview.png"
+  },
+  "text_regions": [
+    {
+      "region_id": "text_det_primary_buttons_001_001",
+      "detection_id": "det_primary_buttons_001",
+      "element_id": "primary_buttons",
+      "region_path": "02_ocr_protect/text_regions/text_det_primary_buttons_001_001.json",
+      "bbox": [80, 80, 220, 104],
+      "text": null,
+      "confidence": 0.0,
+      "source": "placeholder_ocr_protector",
+      "placeholder_visual": "ocr_lock_tint",
+      "future_adapter": "paddleocr_doctr_or_vlm_ocr"
+    }
+  ]
+}
+```
+
 ## Segmentation Manifest
 
 ```json
@@ -198,6 +225,30 @@ All contracts include a `schema_version` field. Breaking changes should incremen
 }
 ```
 
+## Background Repair Manifest
+
+```json
+{
+  "schema_version": "1.0",
+  "actual_adapter": "placeholder_background_repair",
+  "debug_artifacts": {
+    "background_repair_preview": "04_background_repair/background_repair_preview.png"
+  },
+  "repairs": [
+    {
+      "repair_id": "repair_cutout_mask_det_primary_buttons_001",
+      "cutout_id": "cutout_mask_det_primary_buttons_001",
+      "repair_path": "04_background_repair/repairs/repair_cutout_mask_det_primary_buttons_001.json",
+      "repair_asset_path": "04_background_repair/repairs/repair_cutout_mask_det_primary_buttons_001.png",
+      "bbox": [64, 64, 256, 128],
+      "source": "placeholder_background_repair",
+      "placeholder_visual": "inpaint_patch_marker",
+      "future_adapter": "background_inpainting"
+    }
+  ]
+}
+```
+
 ## Compose Manifest
 
 ```json
@@ -208,12 +259,27 @@ All contracts include a `schema_version` field. Breaking changes should incremen
     "composition_preview": "06_compose/composition_preview.png"
   },
   "composition_source": "placeholder_compositor",
+  "background_repairs": [
+    {
+      "asset_id": "repair_cutout_mask_det_primary_buttons_001",
+      "bbox": [64, 64, 256, 128],
+      "generated_asset_path": "04_background_repair/repairs/repair_cutout_mask_det_primary_buttons_001.png",
+      "mode": "background_repair_placeholder"
+    }
+  ],
   "placed_assets": [
     {
       "asset_id": "styled_cutout_mask_det_primary_buttons_001",
       "bbox": [64, 64, 256, 128],
       "generated_asset_path": "05_style/styled_assets/styled_cutout_mask_det_primary_buttons_001.png",
       "mode": "alpha_paste_placeholder"
+    }
+  ],
+  "protected_text_regions": [
+    {
+      "region_id": "text_det_primary_buttons_001_001",
+      "bbox": [80, 80, 220, 104],
+      "source": "placeholder_ocr_protector"
     }
   ]
 }

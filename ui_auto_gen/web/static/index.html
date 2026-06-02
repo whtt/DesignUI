@@ -152,8 +152,10 @@
           <li data-stage="00_ingest">00 Ingest</li>
           <li data-stage="01_plan">01 Plan</li>
           <li data-stage="02_detect">02 Detect</li>
+          <li data-stage="02_ocr_protect">02 OCR Protect</li>
           <li data-stage="03_segment">03 Segment</li>
           <li data-stage="04_cutout">04 Cutout</li>
+          <li data-stage="04_background_repair">04 Repair</li>
           <li data-stage="05_style">05 Style</li>
           <li data-stage="06_compose">06 Compose</li>
           <li data-stage="07_review">07 Review</li>
@@ -176,11 +178,11 @@
             </div>
             <div class="placeholder-item">
               <b>OCR 保护</b>
-              <span>后续会锁定文字区域，避免生成模型破坏文字内容。</span>
+              <span>黄色锁定区会从原图恢复，避免占位生成物覆盖文字内容。</span>
             </div>
             <div class="placeholder-item">
               <b>背景修复</b>
-              <span>后续会用 inpainting 修补被抠掉或替换后的底图区域。</span>
+              <span>修复补丁表示未来 inpainting 会先补底图，再贴回新元素。</span>
             </div>
           </div>
         </section>
@@ -206,11 +208,29 @@
 
           <article class="debug-card">
             <header>
+              <span>文字保护预览</span>
+              <a id="textProtectPreviewLink" href="#" target="_blank" hidden>打开</a>
+            </header>
+            <div id="textProtectPreviewEmpty" class="empty-output compact">运行后显示 OCR 保护区</div>
+            <img id="textProtectPreview" alt="文字保护预览" hidden />
+          </article>
+
+          <article class="debug-card">
+            <header>
               <span>抠图预览</span>
               <a id="cutoutPreviewLink" href="#" target="_blank" hidden>打开</a>
             </header>
             <div id="cutoutPreviewEmpty" class="empty-output compact">运行后显示抠图</div>
             <img id="cutoutPreview" alt="抠图预览" hidden />
+          </article>
+
+          <article class="debug-card">
+            <header>
+              <span>背景修复预览</span>
+              <a id="backgroundRepairPreviewLink" href="#" target="_blank" hidden>打开</a>
+            </header>
+            <div id="backgroundRepairPreviewEmpty" class="empty-output compact">运行后显示 inpainting 占位区</div>
+            <img id="backgroundRepairPreview" alt="背景修复预览" hidden />
           </article>
 
           <article class="debug-card">

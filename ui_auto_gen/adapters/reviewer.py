@@ -35,10 +35,11 @@ class ContractReviewer(ReviewAdapter):
         detection_count = len(detection_manifest["detections"])
         asset_count = len(style_manifest["styled_assets"])
         final_exists = Path(compose_manifest["final_image"]).exists()
-
         checks.append(_check("element_count_matches_detections", expected_count == detection_count))
         checks.append(_check("element_count_matches_assets", expected_count == asset_count))
         checks.append(_check("final_image_exists", final_exists))
+        checks.append(_check("text_protection_regions_recorded", "protected_text_regions" in compose_manifest))
+        checks.append(_check("background_repair_plan_recorded", "background_repairs" in compose_manifest))
 
         if not final_exists:
             issues.append(
@@ -72,4 +73,3 @@ def _check(name: str, passed: bool) -> dict[str, object]:
         "name": name,
         "pass": passed,
     }
-

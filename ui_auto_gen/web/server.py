@@ -332,7 +332,14 @@ def _artifact_urls(output_root: Path, artifacts: dict[str, str]) -> dict[str, st
 
 def _collect_debug_images(output_root: Path, results: list[Any]) -> dict[str, str]:
     debug_images = {}
-    debug_keys = {"detection_preview", "mask_preview", "cutout_preview", "composition_preview"}
+    debug_keys = {
+        "detection_preview",
+        "text_protect_preview",
+        "mask_preview",
+        "cutout_preview",
+        "background_repair_preview",
+        "composition_preview",
+    }
     for result in results:
         for key, value in result.artifacts.items():
             if key in debug_keys:

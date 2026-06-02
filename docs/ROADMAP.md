@@ -15,8 +15,10 @@
 - UI run details panel with stage artifacts.
 - Raster image foundation with mask PNG, cutout PNG, and alpha compositing.
 - Manual rectangle selection and correction UI.
+- Placeholder OCR/text protection stage.
+- Placeholder background repair stage.
 - Future polygon/lasso/brush mask correction.
-- OCR adapter.
+- Real OCR adapter.
 - YOLO26 detector adapter for known UI classes.
 - Grounded detector adapter for open-vocabulary prompts.
 - SAM/SAM2 segmenter adapter.

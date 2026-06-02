@@ -6,6 +6,7 @@ from pathlib import Path
 from ui_auto_gen.paths import make_run_id, repo_root
 from ui_auto_gen.schemas import PipelineContext, StageResult
 from ui_auto_gen.stages import (
+    BackgroundRepairStage,
     ComposeStage,
     CutoutStage,
     DetectStage,
@@ -15,6 +16,7 @@ from ui_auto_gen.stages import (
     ReviewStage,
     SegmentStage,
     StyleStage,
+    TextProtectStage,
 )
 from ui_auto_gen.utils import read_json, utc_now_iso, write_json
 
@@ -27,8 +29,10 @@ class PipelineRunner:
             IngestStage(),
             PlanStage(),
             DetectStage(),
+            TextProtectStage(),
             SegmentStage(),
             CutoutStage(),
+            BackgroundRepairStage(),
             StyleStage(),
             ComposeStage(),
             ReviewStage(),

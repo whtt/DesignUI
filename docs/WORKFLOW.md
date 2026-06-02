@@ -7,12 +7,14 @@ flowchart TD
   A["Job Config"] --> B["00 Ingest"]
   B --> C["01 Plan"]
   C --> D["02 Detect"]
-  D --> E["03 Segment"]
-  E --> F["04 Cutout"]
-  F --> G["05 Style"]
-  G --> H["06 Compose"]
-  H --> I["07 Review"]
-  I --> J["08 Export"]
+  D --> E["02 OCR Protect"]
+  E --> F["03 Segment"]
+  F --> G["04 Cutout"]
+  G --> H["04 Background Repair"]
+  H --> I["05 Style"]
+  I --> J["06 Compose"]
+  J --> K["07 Review"]
+  K --> L["08 Export"]
 ```
 
 ## Stage Responsibilities
@@ -54,6 +56,23 @@ Future upgrades:
 - Grounding DINO for open-vocabulary detection.
 - VLM region proposals for ambiguous UI semantics.
 
+### 02 OCR Protect
+
+Creates text protection regions before any replacement assets are generated.
+
+Current behavior:
+
+- Writes placeholder text-region manifests from detected element boxes.
+- Writes a raster text protection preview.
+- Marks protected areas with `OCR LOCK TODO`.
+- Compose restores these regions from the source image so placeholder generated assets do not cover them.
+
+Future upgrades:
+
+- PaddleOCR, docTR, or VLM OCR text detection.
+- Text content extraction and regression checks.
+- Text layer restoration and redraw.
+
 ### 03 Segment
 
 Creates per-element mask metadata.
@@ -88,6 +107,23 @@ Future upgrades:
 - Shadow separation.
 - Inpainting request generation.
 
+### 04 Background Repair
+
+Creates background repair plans for areas exposed by cutouts.
+
+Current behavior:
+
+- Writes placeholder background repair manifests.
+- Writes visible inpainting placeholder patch PNG files.
+- Writes a raster background repair preview labeled `INPAINT TODO`.
+- Compose can place repair placeholders before style assets.
+
+Future upgrades:
+
+- Real inpainting.
+- Context-aware background reconstruction.
+- Shadow and texture continuation.
+
 ### 05 Style
 
 Creates replacement element artifacts.
@@ -109,7 +145,9 @@ Places generated elements back into the base image.
 
 Current behavior:
 
+- Places placeholder background repair patches.
 - Alpha-composites placeholder styled PNG assets onto a raster base.
+- Restores protected text regions from the source image.
 - Writes `final.png`.
 - Writes a composition preview.
 

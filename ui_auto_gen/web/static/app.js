@@ -28,10 +28,20 @@ const debugTargets = {
     empty: document.querySelector("#maskPreviewEmpty"),
     link: document.querySelector("#maskPreviewLink"),
   },
+  text_protect_preview: {
+    img: document.querySelector("#textProtectPreview"),
+    empty: document.querySelector("#textProtectPreviewEmpty"),
+    link: document.querySelector("#textProtectPreviewLink"),
+  },
   cutout_preview: {
     img: document.querySelector("#cutoutPreview"),
     empty: document.querySelector("#cutoutPreviewEmpty"),
     link: document.querySelector("#cutoutPreviewLink"),
+  },
+  background_repair_preview: {
+    img: document.querySelector("#backgroundRepairPreview"),
+    empty: document.querySelector("#backgroundRepairPreviewEmpty"),
+    link: document.querySelector("#backgroundRepairPreviewLink"),
   },
   composition_preview: {
     img: document.querySelector("#compositionPreview"),
