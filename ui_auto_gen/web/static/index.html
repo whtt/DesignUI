@@ -20,6 +20,30 @@
           </button>
         </header>
 
+        <section class="run-monitor" aria-label="Run status">
+          <div class="run-status">
+            <div>
+              <p class="eyebrow">Run</p>
+              <h2 id="statusTitle">等待运行</h2>
+            </div>
+            <a id="summaryLink" class="ghost-link" href="#" target="_blank" hidden>查看摘要</a>
+          </div>
+
+          <ol id="stageList" class="stage-list">
+            <li data-stage="00_ingest">00 Ingest</li>
+            <li data-stage="01_plan">01 Plan</li>
+            <li data-stage="02_detect">02 Detect</li>
+            <li data-stage="02_ocr_protect">02 OCR</li>
+            <li data-stage="03_segment">03 Segment</li>
+            <li data-stage="04_cutout">04 Cutout</li>
+            <li data-stage="04_background_repair">04 Repair</li>
+            <li data-stage="05_style">05 Style</li>
+            <li data-stage="06_compose">06 Compose</li>
+            <li data-stage="07_review">07 Review</li>
+            <li data-stage="08_export">08 Export</li>
+          </ol>
+        </section>
+
         <form id="jobForm" class="form-grid">
           <label class="field field-wide">
             <span>提示词</span>
@@ -140,28 +164,6 @@
           </div>
         </div>
 
-        <div class="run-status">
-          <div>
-            <p class="eyebrow">Run</p>
-            <h2 id="statusTitle">等待运行</h2>
-          </div>
-          <a id="summaryLink" class="ghost-link" href="#" target="_blank" hidden>查看摘要</a>
-        </div>
-
-        <ol id="stageList" class="stage-list">
-          <li data-stage="00_ingest">00 Ingest</li>
-          <li data-stage="01_plan">01 Plan</li>
-          <li data-stage="02_detect">02 Detect</li>
-          <li data-stage="02_ocr_protect">02 OCR Protect</li>
-          <li data-stage="03_segment">03 Segment</li>
-          <li data-stage="04_cutout">04 Cutout</li>
-          <li data-stage="04_background_repair">04 Repair</li>
-          <li data-stage="05_style">05 Style</li>
-          <li data-stage="06_compose">06 Compose</li>
-          <li data-stage="07_review">07 Review</li>
-          <li data-stage="08_export">08 Export</li>
-        </ol>
-
         <section class="placeholder-guide">
           <header>
             <span>待接入模型说明</span>
@@ -241,14 +243,6 @@
             <div id="compositionPreviewEmpty" class="empty-output compact">运行后显示放置区域</div>
             <img id="compositionPreview" alt="合成意图预览" hidden />
           </article>
-        </section>
-
-        <section class="stage-detail">
-          <header>
-            <span>Stage 详情</span>
-            <span id="detailHint">点击上方步骤查看产物</span>
-          </header>
-          <pre id="stageDetailText">暂无运行详情</pre>
         </section>
 
         <figure class="final-output">

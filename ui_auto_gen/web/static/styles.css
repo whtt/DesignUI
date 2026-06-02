@@ -48,13 +48,50 @@ body {
   background: var(--panel-soft);
 }
 
-.app-header,
-.run-status {
+.app-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 22px;
+  margin-bottom: 12px;
+}
+
+.run-monitor {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 14px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #fbfdff;
+}
+
+.run-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.run-monitor .eyebrow {
+  margin-bottom: 2px;
+  font-size: 10px;
+}
+
+.run-monitor h2 {
+  font-size: 14px;
+}
+
+.run-monitor .ghost-link {
+  min-height: 30px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+.result-panel > .run-status,
+.result-panel > .stage-list,
+.stage-detail {
+  display: none;
 }
 
 .eyebrow {
@@ -75,7 +112,7 @@ h2 {
 }
 
 h2 {
-  font-size: 20px;
+  font-size: 16px;
 }
 
 .primary-button,
@@ -368,33 +405,28 @@ input[type="file"] {
 
 .stage-list {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 5px;
   padding: 0;
-  margin: 0 0 22px;
+  margin: 0;
   list-style: none;
 }
 
 .stage-list li {
-  min-height: 42px;
-  padding: 10px 12px;
+  min-height: 22px;
+  padding: 4px 6px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: #ffffff;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 10px;
+  line-height: 1.25;
 }
 
 .stage-list li.complete {
   color: var(--success);
   border-color: #bbf7d0;
   background: #f0fdf4;
-}
-
-.stage-list li.selected {
-  color: var(--accent);
-  border-color: #93c5fd;
-  background: #eff6ff;
 }
 
 .stage-list li.pending {
@@ -550,5 +582,9 @@ input[type="file"] {
   .control-panel,
   .result-panel {
     padding: 20px;
+  }
+
+  .stage-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

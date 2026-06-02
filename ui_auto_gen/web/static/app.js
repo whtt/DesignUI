@@ -11,7 +11,6 @@ const selectionSurface = document.querySelector("#selectionSurface");
 const selectionOverlay = document.querySelector("#selectionOverlay");
 const manualRegionList = document.querySelector("#manualRegionList");
 const clearManualRegionsButton = document.querySelector("#clearManualRegions");
-const stageDetailText = document.querySelector("#stageDetailText");
 let referencePreview = document.querySelector("#referencePreview");
 let latestRun = null;
 let manualRegions = [];
@@ -124,16 +123,6 @@ selectionSurface.addEventListener("pointercancel", () => {
 
 clearManualRegionsButton.addEventListener("click", clearManualRegions);
 
-stageList.addEventListener("click", (event) => {
-  const item = event.target.closest("li");
-  if (!item || !latestRun) return;
-  const stage = latestRun.stages.find((candidate) => candidate.name === item.dataset.stage);
-  if (!stage) return;
-  [...stageList.children].forEach((child) => child.classList.remove("selected"));
-  item.classList.add("selected");
-  renderStageDetail(stage);
-});
-
 runButton.addEventListener("click", async () => {
   runButton.disabled = true;
   statusTitle.textContent = "运行中";
@@ -141,7 +130,6 @@ runButton.addEventListener("click", async () => {
   resultImage.hidden = true;
   resultEmpty.hidden = false;
   latestRun = null;
-  stageDetailText.textContent = "运行中...";
   resetDebugImages();
   setStages("pending");
 
@@ -164,10 +152,8 @@ runButton.addEventListener("click", async () => {
     resultEmpty.hidden = true;
     summaryLink.href = data.summary_url;
     summaryLink.hidden = false;
-    renderStageDetail(data.stages[0]);
   } catch (error) {
     statusTitle.textContent = error.message;
-    stageDetailText.textContent = error.stack || error.message;
     setStages("");
   } finally {
     runButton.disabled = false;
@@ -355,27 +341,6 @@ function resetDebugImages() {
     target.empty.hidden = false;
     target.link.hidden = true;
   }
-}
-
-function renderStageDetail(stage) {
-  if (!stage) {
-    stageDetailText.textContent = "暂无运行详情";
-    return;
-  }
-  const artifactLines = Object.entries(stage.artifacts || {}).map(([key, value]) => {
-    const url = stage.artifact_urls?.[key];
-    return url ? `${key}: ${value}\n  url: ${url}` : `${key}: ${value}`;
-  });
-  stageDetailText.textContent = [
-    `stage: ${stage.name}`,
-    `status: ${stage.status}`,
-    "",
-    "notes:",
-    ...(stage.notes || []).map((note) => `- ${note}`),
-    "",
-    "artifacts:",
-    ...(artifactLines.length ? artifactLines.map((line) => `- ${line}`) : ["- none"]),
-  ].join("\n");
 }
 
 function setStages(className, stages = []) {
