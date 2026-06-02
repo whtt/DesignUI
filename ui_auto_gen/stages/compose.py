@@ -4,7 +4,8 @@ from pathlib import Path
 
 from ui_auto_gen.schemas import PipelineContext, StageResult
 from ui_auto_gen.stages.base import PipelineStage
-from ui_auto_gen.utils import copy_file, read_json, write_json
+from ui_auto_gen.raster import load_rgba_image, paste_assets, save_png
+from ui_auto_gen.utils import read_json, write_json
 from ui_auto_gen.visual_debug import write_composition_preview
 
 
@@ -16,20 +17,22 @@ class ComposeStage(PipelineStage):
         ingest_manifest = read_json(context.run_root / "00_ingest" / "ingest_manifest.json")
         style_manifest = read_json(context.run_root / "05_style" / "style_manifest.json")
 
-        source_image = Path(ingest_manifest["base_image"]["run_path"])
-        final_image = paths.artifact(f"final{source_image.suffix}")
-        copy_file(source_image, final_image)
         width = ingest_manifest["base_image"].get("width") or 960
         height = ingest_manifest["base_image"].get("height") or 540
+        source_image = Path(ingest_manifest["base_image"]["run_path"])
         placed_assets = [
             {
                 "asset_id": asset["asset_id"],
                 "bbox": asset["bbox"],
-                "mode": "not_applied_placeholder",
+                "generated_asset_path": asset.get("generated_asset_path"),
+                "mode": "alpha_paste_placeholder",
             }
             for asset in style_manifest["styled_assets"]
         ]
-        preview_path = paths.artifact("composition_preview.svg")
+        base = load_rgba_image(source_image, width, height)
+        final_image = paths.artifact("final.png")
+        save_png(paste_assets(base, placed_assets), final_image)
+        preview_path = paths.artifact("composition_preview.png")
         write_composition_preview(
             base_image=source_image,
             width=width,
@@ -47,7 +50,7 @@ class ComposeStage(PipelineStage):
             "composition_source": "placeholder_compositor",
             "placed_assets": placed_assets,
             "notes": [
-                "Placeholder compositor copied the base image. Future compositor should apply styled assets by layer."
+                "Raster compositor pasted placeholder styled assets. Future compositor should apply real generated assets by layer."
             ],
         }
         manifest_path = paths.artifact("compose_manifest.json")
@@ -66,5 +69,5 @@ class ComposeStage(PipelineStage):
                 "final_image": str(final_image),
                 "composition_preview": str(preview_path),
             },
-            notes=["Copied base image as placeholder final output."],
+            notes=["Composited placeholder styled assets onto a raster base image."],
         )

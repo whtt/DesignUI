@@ -15,6 +15,7 @@ ui_auto_gen/
   cli.py
   pipeline.py
   paths.py
+  raster.py
   schemas.py
   utils.py
   visual_debug.py
@@ -105,11 +106,25 @@ Only the adapter implementation should know model-specific details. The stage ou
 
 The current debug layer writes SVG previews without external dependencies:
 
-- `02_detect/detection_preview.svg`: base image plus detection boxes.
-- `03_segment/mask_preview.svg`: base image plus translucent placeholder masks.
-- `06_compose/composition_preview.svg`: base image plus intended asset placement.
+- `02_detect/detection_preview.png`: raster base plus detection boxes.
+- `03_segment/mask_preview.png`: raster base plus translucent placeholder masks.
+- `04_cutout/cutout_preview.png`: transparent cutout contact sheet.
+- `06_compose/composition_preview.png`: raster base plus intended asset placement.
 
 These previews are served by the local UI through `/artifacts/...` links.
+
+## Raster Foundation
+
+`ui_auto_gen.raster` provides the current image-processing base:
+
+- Load PNG/JPG images through Pillow.
+- Create a raster fallback canvas for unsupported formats such as SVG.
+- Generate rectangular mask PNG files.
+- Generate transparent cutout PNG files from masks.
+- Generate placeholder styled PNG assets.
+- Alpha-composite styled assets into `final.png`.
+
+The SVG fallback is a debugging approximation only. Uploaded PNG/JPG images use real pixels.
 
 ## Local UI
 

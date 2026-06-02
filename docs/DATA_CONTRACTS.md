@@ -98,7 +98,7 @@ All contracts include a `schema_version` field. Breaking changes should incremen
   "requested_algorithm": "yolo26",
   "actual_adapter": "placeholder_detector",
   "debug_artifacts": {
-    "detection_preview": "02_detect/detection_preview.svg"
+    "detection_preview": "02_detect/detection_preview.png"
   },
   "detections": [
     {
@@ -123,16 +123,60 @@ All contracts include a `schema_version` field. Breaking changes should incremen
   "requested_algorithm": "sam2",
   "actual_adapter": "placeholder_segmenter",
   "debug_artifacts": {
-    "mask_preview": "03_segment/mask_preview.svg"
+    "mask_preview": "03_segment/mask_preview.png"
   },
   "masks": [
     {
       "mask_id": "mask_det_primary_buttons_001",
       "detection_id": "det_primary_buttons_001",
       "mask_path": "03_segment/masks/mask_det_primary_buttons_001.json",
+      "mask_png_path": "03_segment/masks/mask_det_primary_buttons_001.png",
       "bbox": [64, 64, 256, 128],
       "confidence": 0.5,
       "source": "placeholder_segmenter"
+    }
+  ]
+}
+```
+
+## Cutout Manifest
+
+```json
+{
+  "schema_version": "1.0",
+  "debug_artifacts": {
+    "cutout_preview": "04_cutout/cutout_preview.png"
+  },
+  "cutouts": [
+    {
+      "cutout_id": "cutout_mask_det_primary_buttons_001",
+      "mask_id": "mask_det_primary_buttons_001",
+      "cutout_path": "04_cutout/cutouts/cutout_mask_det_primary_buttons_001.json",
+      "mask_png_path": "03_segment/masks/mask_det_primary_buttons_001.png",
+      "alpha_asset_path": "04_cutout/cutouts/cutout_mask_det_primary_buttons_001.png",
+      "bbox": [64, 64, 256, 128],
+      "source": "raster_cutout"
+    }
+  ]
+}
+```
+
+## Compose Manifest
+
+```json
+{
+  "schema_version": "1.0",
+  "final_image": "06_compose/final.png",
+  "debug_artifacts": {
+    "composition_preview": "06_compose/composition_preview.png"
+  },
+  "composition_source": "placeholder_compositor",
+  "placed_assets": [
+    {
+      "asset_id": "styled_cutout_mask_det_primary_buttons_001",
+      "bbox": [64, 64, 256, 128],
+      "generated_asset_path": "05_style/styled_assets/styled_cutout_mask_det_primary_buttons_001.png",
+      "mode": "alpha_paste_placeholder"
     }
   ]
 }

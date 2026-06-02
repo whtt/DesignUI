@@ -13,6 +13,8 @@
 - Adapter interfaces for detector, segmenter, style, and review.
 - Visual debug previews for detections and masks.
 - UI run details panel with stage artifacts.
+- Raster image foundation with mask PNG, cutout PNG, and alpha compositing.
+- Manual rectangle selection and correction UI.
 - OCR adapter.
 - YOLO26 detector adapter for known UI classes.
 - Grounded detector adapter for open-vocabulary prompts.

@@ -19,11 +19,11 @@ class SegmentStage(PipelineStage):
         detection_manifest = read_json(context.run_root / "02_detect" / "detection_manifest.json")
 
         requested_algorithm = context.config.get("algorithms", {}).get("segmenter", "placeholder_segmenter")
-        adapter = PlaceholderSegmenter()
-        masks = adapter.segment(detection_manifest["detections"], masks_dir)
         width = ingest_manifest["base_image"].get("width") or 960
         height = ingest_manifest["base_image"].get("height") or 540
-        preview_path = paths.artifact("mask_preview.svg")
+        adapter = PlaceholderSegmenter()
+        masks = adapter.segment(detection_manifest["detections"], masks_dir, (width, height))
+        preview_path = paths.artifact("mask_preview.png")
         write_mask_preview(
             base_image=Path(ingest_manifest["base_image"]["run_path"]),
             width=width,

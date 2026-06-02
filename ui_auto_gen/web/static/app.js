@@ -22,6 +22,11 @@ const debugTargets = {
     empty: document.querySelector("#maskPreviewEmpty"),
     link: document.querySelector("#maskPreviewLink"),
   },
+  cutout_preview: {
+    img: document.querySelector("#cutoutPreview"),
+    empty: document.querySelector("#cutoutPreviewEmpty"),
+    link: document.querySelector("#cutoutPreviewLink"),
+  },
   composition_preview: {
     img: document.querySelector("#compositionPreview"),
     empty: document.querySelector("#compositionPreviewEmpty"),

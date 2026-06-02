@@ -6,6 +6,7 @@ import mimetypes
 from pathlib import Path
 from typing import Any
 
+from ui_auto_gen.raster import draw_bbox_overlay, load_rgba_image, save_png
 
 COLORS = ["#2563eb", "#16a34a", "#dc2626", "#9333ea", "#ea580c", "#0891b2"]
 
@@ -17,12 +18,15 @@ def write_detection_preview(
     detections: list[dict[str, Any]],
     destination: Path,
 ) -> None:
-    overlays = []
-    for index, detection in enumerate(detections):
-        color = COLORS[index % len(COLORS)]
-        label = f"{detection.get('label', 'element')} {detection.get('confidence', 0):.2f}"
-        overlays.append(_rect_overlay(detection["bbox"], color, label))
-    _write_overlay_svg(base_image, width, height, overlays, destination)
+    base = load_rgba_image(base_image, width, height)
+    items = [
+        {
+            **detection,
+            "preview_label": f"{detection.get('label', 'element')} {detection.get('confidence', 0):.2f}",
+        }
+        for detection in detections
+    ]
+    save_png(draw_bbox_overlay(base, items, "preview_label"), destination)
 
 
 def write_mask_preview(
@@ -32,11 +36,8 @@ def write_mask_preview(
     masks: list[dict[str, Any]],
     destination: Path,
 ) -> None:
-    overlays = []
-    for index, mask in enumerate(masks):
-        color = COLORS[index % len(COLORS)]
-        overlays.append(_rect_overlay(mask["bbox"], color, mask["mask_id"], fill_opacity="0.22"))
-    _write_overlay_svg(base_image, width, height, overlays, destination)
+    base = load_rgba_image(base_image, width, height)
+    save_png(draw_bbox_overlay(base, masks, "mask_id", translucent=True), destination)
 
 
 def write_composition_preview(
@@ -46,11 +47,8 @@ def write_composition_preview(
     placed_assets: list[dict[str, Any]],
     destination: Path,
 ) -> None:
-    overlays = []
-    for index, asset in enumerate(placed_assets):
-        color = COLORS[index % len(COLORS)]
-        overlays.append(_rect_overlay(asset["bbox"], color, asset["asset_id"], stroke_dasharray="8 5"))
-    _write_overlay_svg(base_image, width, height, overlays, destination)
+    base = load_rgba_image(base_image, width, height)
+    save_png(draw_bbox_overlay(base, placed_assets, "asset_id"), destination)
 
 
 def _write_overlay_svg(base_image: Path, width: int, height: int, overlays: list[str], destination: Path) -> None:
@@ -89,4 +87,3 @@ def _data_uri(path: Path) -> str:
     mime_type = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
     encoded = base64.b64encode(path.read_bytes()).decode("ascii")
     return f"data:{mime_type};base64,{encoded}"
-

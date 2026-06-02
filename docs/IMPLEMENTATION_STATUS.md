@@ -21,6 +21,7 @@
 - 已完成：运行后展示摘要链接。
 - 已完成：运行后展示检测框预览。
 - 已完成：运行后展示 mask 预览。
+- 已完成：运行后展示抠图预览。
 - 已完成：运行后展示合成意图预览。
 - 已完成：点击 stage 后展示 notes 和 artifact links。
 
@@ -68,10 +69,21 @@
 
 ### 可视化调试产物
 
-- 已完成：`02_detect/detection_preview.svg`，展示检测框。
-- 已完成：`03_segment/mask_preview.svg`，展示半透明占位 mask。
-- 已完成：`06_compose/composition_preview.svg`，展示合成放置意图。
+- 已完成：`02_detect/detection_preview.png`，展示检测框。
+- 已完成：`03_segment/mask_preview.png`，展示半透明占位 mask。
+- 已完成：`04_cutout/cutout_preview.png`，展示透明抠图 contact sheet。
+- 已完成：`06_compose/composition_preview.png`，展示合成放置意图。
 - 已完成：这些调试图会通过 UI 展示，并可通过 artifact link 打开。
+
+### Raster 图像处理基础
+
+- 已完成：通过 Pillow 读取 PNG/JPG。
+- 已完成：对 SVG 等暂不支持的格式生成 raster fallback canvas。
+- 已完成：生成矩形 mask PNG。
+- 已完成：根据 mask PNG 生成透明 cutout PNG。
+- 已完成：生成 placeholder styled asset PNG。
+- 已完成：基础 alpha paste 合成，输出 `06_compose/final.png`。
+- 已完成：最终图不再只是复制底图，而是会贴回 placeholder styled assets。
 
 ### 文档
 
@@ -137,9 +149,9 @@
 
 ### 抠图和背景修复
 
-- 占位：`04_cutout` 目前只生成 cutout JSON。
-- 未接入：真实 alpha cutout。
-- 未接入：透明 PNG 元素输出。
+- 已接入：`04_cutout` 会生成 cutout JSON 和透明 PNG。
+- 已接入：矩形 mask 下的 alpha cutout。
+- 已接入：透明 PNG 元素输出。
 - 未接入：背景 inpainting。
 - 未接入：阴影分离。
 - 未接入：边缘羽化。
@@ -155,11 +167,11 @@
 
 ### 合成
 
-- 占位：`06_compose` 当前仍是复制底图作为 final image。
+- 已接入：`06_compose` 当前会输出 raster `final.png`。
 - 已接入：合成意图预览。
-- 未接入：真实图层合成。
-- 未接入：根据 bbox 放回替换元素。
-- 未接入：透明通道混合。
+- 已接入：根据 bbox 放回 placeholder styled asset。
+- 已接入：透明通道混合。
+- 未接入：真实生成资产图层合成。
 - 未接入：阴影、高光、边框重建。
 - 未接入：像素网格对齐。
 - 未接入：全局色彩统一。
@@ -197,9 +209,8 @@
 
 ## 下一批建议优先完成
 
-1. 增加基础图片处理库，例如 Pillow，用于真实 PNG/JPG 读写和简单合成。
-2. 让矩形 mask 产出真实 raster mask 文件，而不仅是 JSON。
-3. 增加 OCR 文字保护占位层，防止后续生成模型破坏文字。
-4. 接入第一个真实模型，优先建议从检测或分割开始。
-5. 增加运行历史列表和 run 详情页。
-
+1. 增加手动矩形圈选和 correction UI。
+2. 增加 OCR 文字保护占位层，防止后续生成模型破坏文字。
+3. 接入第一个真实模型，优先建议从检测或分割开始。
+4. 增加运行历史列表和 run 详情页。
+5. 增加背景修复占位图和 inpainting adapter 接口。

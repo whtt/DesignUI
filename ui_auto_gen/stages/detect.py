@@ -22,7 +22,7 @@ class DetectStage(PipelineStage):
         requested_algorithm = context.config.get("algorithms", {}).get("detector", "placeholder_detector")
         adapter = PlaceholderDetector()
         detections = adapter.detect(plan_manifest["elements"], width, height)
-        preview_path = paths.artifact("detection_preview.svg")
+        preview_path = paths.artifact("detection_preview.png")
         write_detection_preview(
             base_image=Path(ingest_manifest["base_image"]["run_path"]),
             width=width,

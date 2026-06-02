@@ -59,6 +59,8 @@ Creates per-element mask metadata.
 Current behavior:
 
 - Writes placeholder mask manifests.
+- Writes rectangular grayscale mask PNG files.
+- Writes a raster mask preview.
 
 Future upgrades:
 
@@ -72,7 +74,9 @@ Extracts target elements and prepares background repair metadata.
 
 Current behavior:
 
-- Creates cutout manifests only.
+- Creates cutout manifests.
+- Creates transparent cutout PNG files from mask PNG files.
+- Creates a cutout contact-sheet preview.
 
 Future upgrades:
 
@@ -101,7 +105,9 @@ Places generated elements back into the base image.
 
 Current behavior:
 
-- Copies the ingested base image as the final output.
+- Alpha-composites placeholder styled PNG assets onto a raster base.
+- Writes `final.png`.
+- Writes a composition preview.
 
 Future upgrades:
 
@@ -144,4 +150,3 @@ Stages should be retryable from their own inputs. When a stage fails or produces
 - Segmentation issue: rerun mask refinement only.
 - Style issue: regenerate only the failed element.
 - Composition issue: recompose without regenerating assets.
-
