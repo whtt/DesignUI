@@ -128,6 +128,7 @@
             <span>风格替换</span>
             <select id="style">
               <option value="placeholder_style_adapter">占位风格器</option>
+              <option value="lightweight_style_transfer">轻量风格迁移</option>
               <option value="controlnet_ipadapter">ControlNet + IPAdapter</option>
               <option value="parameter_ui_renderer">参数化 UI 重绘</option>
               <option value="asset_library">资产库替换</option>
@@ -177,7 +178,7 @@
             </div>
             <div class="placeholder-item">
               <b>风格迁移</b>
-              <span>emoji 贴纸表示未来会被 ControlNet、IPAdapter 或参数化 UI 重绘替换。</span>
+              <span>轻量风格迁移会基于参考图或调色板处理 cutout；占位风格器仍用 emoji 标记未来模型输出。</span>
             </div>
             <div class="placeholder-item">
               <b>OCR 保护</b>
@@ -234,6 +235,15 @@
             </header>
             <div id="backgroundRepairPreviewEmpty" class="empty-output compact">运行后显示 inpainting 占位区</div>
             <img id="backgroundRepairPreview" alt="背景修复预览" hidden />
+          </article>
+
+          <article class="debug-card">
+            <header>
+              <span>风格素材预览</span>
+              <a id="stylePreviewLink" href="#" target="_blank" hidden>打开</a>
+            </header>
+            <div id="stylePreviewEmpty" class="empty-output compact">运行后显示风格化素材</div>
+            <img id="stylePreview" alt="风格素材预览" hidden />
           </article>
 
           <article class="debug-card">

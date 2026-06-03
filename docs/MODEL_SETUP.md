@@ -146,3 +146,31 @@ As of the latest local deployment:
 - GPU: not required.
 - Verified run: `actual_adapter = rapidocr_protector`, `fallback = null`.
 - First-use model files: stored under `.venv` and ignored by Git.
+
+## Lightweight Style Transfer
+
+DesignUI can use a lightweight local style-transfer adapter for the `05_style` stage when `algorithms.style` is set to `lightweight_style_transfer`.
+
+Current behavior:
+
+- `LightweightStyleTransferAdapter` loads each cutout PNG from `04_cutout`.
+- If a reference image is provided, it transfers RGB channel statistics from that reference image.
+- If no reference image is provided, it uses `global_style.palette` or prompt-derived default palettes.
+- It preserves the cutout alpha channel and writes real styled PNG assets.
+- If the adapter fails, `StyleStage` falls back to `PlaceholderStyleAdapter`.
+
+This adapter does not require a neural checkpoint, GPU, or external API. It is intentionally small so the pipeline can exercise the style-generation contract before adding ONNX fast neural style transfer, ControlNet, IPAdapter, LoRA, or parameterized UI redraw.
+
+### Smoke Test
+
+```powershell
+.\.venv\Scripts\python.exe -B -m ui_auto_gen.cli run --config configs\sample_lightweight_style_job.json --run-id lightweight_style_smoke
+```
+
+Successful runs should record:
+
+```text
+actual_adapter = lightweight_style_transfer_adapter
+model.engine = pillow
+fallback = null
+```

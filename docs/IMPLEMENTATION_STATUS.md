@@ -2,7 +2,7 @@
 
 本文档记录当前本地 UI 和自动化 UI 图生成 pipeline 的真实接入状态。
 
-结论：当前版本已经把“本地 UI -> 生成 job config -> 跑完整 pipeline -> 产出 run artifacts -> 展示调试图和 stage 详情”的工程链路接通。SAM2.1 tiny 分割和 RapidOCR 轻量 OCR 已经作为可选本地模型接入；真实检测、抠图、风格迁移、视觉自审等模型能力仍未接入，当前仍以占位 adapter 为主。
+结论：当前版本已经把“本地 UI -> 生成 job config -> 跑完整 pipeline -> 产出 run artifacts -> 展示调试图和 stage 详情”的工程链路接通。SAM2.1 tiny 分割、RapidOCR 轻量 OCR 和轻量本地风格迁移已经作为可选本地能力接入；真实检测、inpainting、参数化 UI 重绘、大模型风格生成和视觉自审等能力仍未接入。
 
 ## 已完成项
 
@@ -127,6 +127,18 @@
 - Completed local deployment: `.venv` uses RapidOCR with ONNX Runtime on CPU.
 - Verified local run: CLI can use `actual_adapter = rapidocr_protector`, `fallback = null`.
 
+### Lightweight style transfer
+
+- Completed: added optional `LightweightStyleTransferAdapter` for `algorithms.style = lightweight_style_transfer`.
+- Completed: added `configs/sample_lightweight_style_job.json` for lightweight style-transfer smoke tests.
+- Completed: `05_style/style_manifest.json` now records `model` and `fallback` metadata.
+- Completed: the adapter writes real styled PNG assets by applying reference-image or palette-driven color-statistics transfer to cutout PNG files.
+- Completed: the adapter preserves the cutout alpha channel so composition can paste the asset back into the original bbox.
+- Completed: `05_style/style_preview.png` provides a contact-sheet preview of generated styled assets and is shown in the UI.
+- Completed: when lightweight transfer fails, the pipeline falls back to `PlaceholderStyleAdapter` and still completes.
+- Verified local run: CLI can use `actual_adapter = lightweight_style_transfer_adapter`, `model.engine = pillow`, `fallback = null`.
+- Still not connected: ControlNet, IPAdapter, LoRA, ComfyUI workflows, ONNX neural style-transfer checkpoints, parameterized UI redraw, and asset-library replacement.
+
 ### 文档
 
 - 已完成：需求文档 `docs/PRD.md`。
@@ -151,7 +163,7 @@
 
 - 已接入文件管理：参考图可以上传、保存、预览。
 - 占位：参考图路径会被写入 job config。
-- 未接入：参考图还没有传给风格迁移模型。
+- 已接入：参考图路径会传给轻量风格迁移 adapter；缺少参考图时使用 `global_style.palette`。
 - 未接入：还没有 IPAdapter、CLIP style embedding 或风格 token 提取。
 
 ### 文生图
@@ -203,9 +215,11 @@
 
 ### 风格替换
 
-- 占位：下拉框里的 `ControlNet + IPAdapter`、`参数化 UI 重绘`、`资产库替换` 目前只会被记录。
-- 当前实际执行：`PlaceholderStyleAdapter`。
+- 已接入：下拉框里的 `轻量风格迁移` 会请求本地轻量风格迁移 adapter。
+- 当前可选真实执行：`LightweightStyleTransferAdapter`，会基于参考图或调色板对 cutout PNG 做色彩统计迁移，并输出真实 styled PNG asset。
+- 当前默认执行：`PlaceholderStyleAdapter`。
 - 未接入：ControlNet、IPAdapter、LoRA、ComfyUI workflow。
+- 未接入：ONNX fast neural style-transfer checkpoint。
 - 未接入：参数化按钮/卡片/表单控件重绘。
 - 未接入：图标资产库替换。
 - 未接入：色板和 design token 自动应用。
@@ -214,7 +228,7 @@
 
 - 已接入：`06_compose` 当前会输出 raster `final.png`。
 - 已接入：合成意图预览。
-- 已接入：根据 bbox 放回 placeholder styled asset。
+- 已接入：根据 bbox 放回 styled asset，支持占位素材和轻量风格迁移素材。
 - 已接入：透明通道混合。
 - 未接入：真实生成资产图层合成。
 - 未接入：阴影、高光、边框重建。
@@ -247,7 +261,7 @@
 - “检测算法”下拉框现在不是实际切换模型，只是记录用户选择。
 - “分割算法”下拉框中的 `SAM2` 已有实际分割行为；其他分割选项仍未接入。
 - “OCR”下拉框中的 `RapidOCR` 已有实际 OCR 行为；其他 OCR 选项仍未接入。
-- “风格替换”下拉框现在没有实际生成行为。
+- “风格替换”下拉框中的 `轻量风格迁移` 已有实际本地风格处理行为；其他风格选项仍未接入。
 - “自审”下拉框现在只有契约检查真实运行。
 - “最终结果”目前多数情况下等于输入底图或文生图占位底图。
 - “参考图”目前只参与保存和记录，还没有参与生成。

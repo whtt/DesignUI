@@ -165,6 +165,31 @@ def cutout_contact_sheet(cutouts: list[dict[str, Any]], destination_size: tuple[
     return sheet
 
 
+def asset_contact_sheet(assets: list[dict[str, Any]], destination_size: tuple[int, int] = (960, 360)) -> Image.Image:
+    width, height = destination_size
+    sheet = _checkerboard(destination_size)
+    draw = ImageDraw.Draw(sheet)
+    if not assets:
+        draw.text((24, 24), "No styled assets", fill=(100, 116, 139, 255), font=_font())
+        return sheet
+
+    gap = 18
+    columns = min(4, max(1, len(assets)))
+    cell_width = (width - (gap * (columns + 1))) // columns
+    cell_height = height - (gap * 2)
+    for index, asset in enumerate(assets[:columns]):
+        path = Path(asset.get("generated_asset_path") or "")
+        if not path.exists():
+            continue
+        image = load_rgba_image(path)
+        image.thumbnail((cell_width, cell_height - 28))
+        x = gap + index * (cell_width + gap)
+        y = gap + 18
+        sheet.alpha_composite(image, (x + (cell_width - image.width) // 2, y))
+        draw.text((x, height - gap - 16), asset["asset_id"][:28], fill=(51, 65, 85, 255), font=_font())
+    return sheet
+
+
 def _checkerboard(size: tuple[int, int]) -> Image.Image:
     width, height = size
     image = Image.new("RGBA", size, (255, 255, 255, 255))

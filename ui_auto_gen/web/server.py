@@ -338,6 +338,7 @@ def _collect_debug_images(output_root: Path, results: list[Any]) -> dict[str, st
         "mask_preview",
         "cutout_preview",
         "background_repair_preview",
+        "style_preview",
         "composition_preview",
     }
     for result in results:

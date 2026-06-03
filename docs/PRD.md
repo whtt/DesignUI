@@ -4,7 +4,7 @@
 
 Build a modular pipeline that accepts a base UI image plus a structured description of target elements, then identifies, extracts, restyles, recomposes, reviews, and exports a new UI image.
 
-The MVP focuses on orchestration, file management, stage independence, and stable data contracts. Model integrations come later.
+The MVP focuses on orchestration, file management, stage independence, and stable data contracts. Model integrations are added incrementally behind adapters.
 
 ## Users
 
@@ -27,8 +27,8 @@ The first version must:
 
 ## Non-Goals For MVP
 
-- Real YOLO/SAM/VLM/OCR integration.
-- Real inpainting or style transfer.
+- Production-grade YOLO/VLM review integration.
+- Production-grade inpainting or large-model style transfer.
 - Batch queue system.
 - Figma/PSD export.
 - Human-in-the-loop annotation interface.

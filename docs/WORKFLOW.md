@@ -133,12 +133,17 @@ Creates replacement element artifacts.
 
 Current behavior:
 
+- Uses lightweight local style transfer when `algorithms.style = lightweight_style_transfer`.
+- Applies reference-image or palette-driven color-statistics transfer to cutout PNG assets.
+- Falls back to placeholder style assets if lightweight transfer cannot run.
+- Writes a style asset contact-sheet preview.
 - Creates placeholder style artifacts.
 - Renders visible emoji/sticker markers into placeholder assets so users can distinguish future style-transfer output from a finished model result.
 
 Future upgrades:
 
 - ControlNet/IPAdapter/LoRA style transfer.
+- ONNX fast neural style-transfer models.
 - Parameterized UI control rendering.
 - Asset-library replacement for icons.
 
@@ -149,7 +154,7 @@ Places generated elements back into the base image.
 Current behavior:
 
 - Places placeholder background repair patches.
-- Alpha-composites placeholder styled PNG assets onto a raster base.
+- Alpha-composites styled PNG assets onto a raster base.
 - Restores protected text regions from the source image.
 - Writes `final.png`.
 - Writes a composition preview.

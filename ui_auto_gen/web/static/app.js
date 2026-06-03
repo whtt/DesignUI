@@ -42,6 +42,11 @@ const debugTargets = {
     empty: document.querySelector("#backgroundRepairPreviewEmpty"),
     link: document.querySelector("#backgroundRepairPreviewLink"),
   },
+  style_preview: {
+    img: document.querySelector("#stylePreview"),
+    empty: document.querySelector("#stylePreviewEmpty"),
+    link: document.querySelector("#stylePreviewLink"),
+  },
   composition_preview: {
     img: document.querySelector("#compositionPreview"),
     empty: document.querySelector("#compositionPreviewEmpty"),

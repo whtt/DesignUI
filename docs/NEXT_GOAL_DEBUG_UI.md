@@ -55,7 +55,7 @@ This phase builds the inspection surface first, so later model integration can b
 - Real YOLO/SAM/OCR/VLM integration.
 - Real alpha cutout.
 - Real inpainting.
-- Real style transfer.
+- Neural or production-grade style transfer.
 - PSD/Figma export.
 
 ## Done Criteria

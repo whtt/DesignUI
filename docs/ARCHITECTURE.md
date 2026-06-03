@@ -107,7 +107,7 @@ adapters/sam2.py
 adapters/background.py
   BackgroundRepairAdapter -> PlaceholderBackgroundRepair -> future InpaintingRepairAdapter
 adapters/style.py
-  StyleAdapter -> PlaceholderStyleAdapter -> future ControlNet/IPAdapter adapter
+  StyleAdapter -> PlaceholderStyleAdapter -> LightweightStyleTransferAdapter -> future ControlNet/IPAdapter adapter
 adapters/reviewer.py
   ReviewAdapter -> ContractReviewer -> future VLM reviewer
 ```
@@ -118,6 +118,8 @@ SAM2 is optional. `SegmentStage` attempts `Sam2TinySegmenter` only when `algorit
 
 RapidOCR is optional. `TextProtectStage` attempts `RapidOcrProtector` only when `algorithms.ocr` requests `rapidocr`; otherwise it uses the placeholder OCR protector. If RapidOCR or ONNX Runtime is unavailable, the stage records a fallback reason and completes with placeholder text locks.
 
+Lightweight style transfer is optional. `StyleStage` attempts `LightweightStyleTransferAdapter` only when `algorithms.style` requests `lightweight_style_transfer`; otherwise it uses the placeholder style adapter. The current implementation uses Pillow-based color-statistics transfer from a reference image or `global_style.palette`, so it runs locally without GPU or large model dependencies.
+
 ## Visual Debug Artifacts
 
 The current debug layer writes SVG previews without external dependencies:
@@ -127,6 +129,7 @@ The current debug layer writes SVG previews without external dependencies:
 - `03_segment/mask_preview.png`: raster base plus translucent placeholder masks.
 - `04_cutout/cutout_preview.png`: transparent cutout contact sheet.
 - `04_background_repair/background_repair_preview.png`: raster base plus inpainting placeholder regions.
+- `05_style/style_preview.png`: contact sheet of generated styled assets.
 - `06_compose/composition_preview.png`: raster base plus intended asset placement.
 
 These previews are served by the local UI through `/artifacts/...` links.
@@ -140,6 +143,7 @@ These previews are served by the local UI through `/artifacts/...` links.
 - Generate rectangular mask PNG files.
 - Generate transparent cutout PNG files from masks.
 - Generate placeholder styled PNG assets.
+- Generate lightweight color-transferred styled PNG assets.
 - Generate placeholder background repair patch PNG files.
 - Alpha-composite styled assets into `final.png`.
 - Restore protected text regions from the source image during composition.

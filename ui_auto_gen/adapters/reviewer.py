@@ -54,11 +54,13 @@ class ContractReviewer(ReviewAdapter):
                 }
             )
 
-        placeholder_parts = ["detection", "style transfer", "composition"]
+        placeholder_parts = ["detection", "composition"]
         if not segmentation_manifest or segmentation_manifest.get("actual_adapter") == "placeholder_segmenter":
             placeholder_parts.append("segmentation")
         if not text_protect_manifest or text_protect_manifest.get("actual_adapter") == "placeholder_ocr_protector":
             placeholder_parts.append("OCR")
+        if style_manifest.get("actual_adapter") == "placeholder_style_adapter":
+            placeholder_parts.append("style transfer")
         if placeholder_parts:
             issues.append(
                 {

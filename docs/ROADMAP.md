@@ -19,6 +19,7 @@
 - Placeholder background repair stage.
 - Optional SAM2.1 tiny segmenter with safe placeholder fallback.
 - Optional RapidOCR lightweight OCR adapter with safe placeholder fallback.
+- Optional lightweight local style-transfer adapter with safe placeholder fallback.
 - Future polygon/lasso/brush mask correction.
 - Future OCR text regression and higher-accuracy OCR adapters.
 - YOLO26 detector adapter for known UI classes.
@@ -36,6 +37,7 @@
 
 - Style reference ingestion.
 - ControlNet/IPAdapter/LoRA generation adapter.
+- ONNX fast neural style-transfer adapter.
 - Asset-library replacement for icons and controls.
 - Automatic style-token extraction.
 

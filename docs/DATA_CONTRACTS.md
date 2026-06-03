@@ -237,6 +237,11 @@ When SAM2 cannot run, `actual_adapter` becomes `placeholder_segmenter` and `fall
   "schema_version": "1.0",
   "requested_algorithm": "controlnet_ipadapter",
   "actual_adapter": "placeholder_style_adapter",
+  "model": null,
+  "fallback": null,
+  "debug_artifacts": {
+    "style_preview": "05_style/style_preview.png"
+  },
   "styled_assets": [
     {
       "asset_id": "styled_cutout_mask_det_primary_buttons_001",
@@ -252,6 +257,44 @@ When SAM2 cannot run, `actual_adapter` becomes `placeholder_segmenter` and `fall
   ]
 }
 ```
+
+When lightweight style transfer runs successfully, `actual_adapter` becomes `lightweight_style_transfer_adapter`, `model` records the local transfer metadata, and styled assets point to real color-transferred cutout PNG files:
+
+```json
+{
+  "schema_version": "1.0",
+  "requested_algorithm": "lightweight_style_transfer",
+  "actual_adapter": "lightweight_style_transfer_adapter",
+  "model": {
+    "model_family": "classical_color_transfer",
+    "model_size": "tiny",
+    "engine": "pillow",
+    "strength": 0.72,
+    "style_source": "global_style.palette"
+  },
+  "fallback": null,
+  "debug_artifacts": {
+    "style_preview": "05_style/style_preview.png"
+  },
+  "styled_assets": [
+    {
+      "asset_id": "styled_cutout_mask_det_primary_buttons_001",
+      "element_id": "primary_buttons",
+      "cutout_id": "cutout_mask_det_primary_buttons_001",
+      "asset_path": "05_style/styled_assets/styled_cutout_mask_det_primary_buttons_001.json",
+      "generated_asset_path": "05_style/styled_assets/styled_cutout_mask_det_primary_buttons_001.png",
+      "bbox": [64, 64, 256, 128],
+      "source": "lightweight_style_transfer_adapter",
+      "model": {
+        "model_family": "classical_color_transfer",
+        "engine": "pillow"
+      }
+    }
+  ]
+}
+```
+
+When lightweight style transfer cannot run, `actual_adapter` becomes `placeholder_style_adapter` and `fallback` records `requested_adapter`, `fallback_adapter`, and `reason`.
 
 ## Cutout Manifest
 
