@@ -104,6 +104,7 @@
 - Completed: added `04_background_repair`, which writes placeholder repair manifests, patch PNG files, and `background_repair_preview.png`.
 - Completed: background repair regions are labeled `INPAINT TODO` and use `placeholder_visual = inpaint_patch_marker`.
 - Completed: UI now displays text protection and background repair previews as independent debug cards.
+- Completed: `06_compose/final.png` skips placeholder background repair overlays so visible inpainting markers do not leak into final output.
 - Still not connected: real OCR text content regression and real inpainting models.
 
 ### SAM2 tiny segmentation
@@ -229,6 +230,7 @@
 - 已接入：`06_compose` 当前会输出 raster `final.png`。
 - 已接入：合成意图预览。
 - 已接入：根据 bbox 放回 styled asset，支持占位素材和轻量风格迁移素材。
+- 已接入：最终图会跳过 placeholder background repair overlay，避免把圈选/修复占位框贴进最终结果。
 - 已接入：透明通道混合。
 - 未接入：真实生成资产图层合成。
 - 未接入：阴影、高光、边框重建。

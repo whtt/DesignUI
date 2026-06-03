@@ -28,6 +28,9 @@ class ComposeStage(PipelineStage):
                 "bbox": repair["bbox"],
                 "generated_asset_path": repair.get("repair_asset_path"),
                 "mode": "background_repair_placeholder",
+                "source": repair.get("source"),
+                "placeholder_visual": repair.get("placeholder_visual"),
+                "applied_to_final": not _is_placeholder_repair(repair),
             }
             for repair in background_manifest.get("repairs", [])
         ]
@@ -42,7 +45,8 @@ class ComposeStage(PipelineStage):
         ]
         base = load_rgba_image(source_image, width, height)
         final_image = paths.artifact("final.png")
-        repaired_base = paste_assets(base, background_repairs)
+        final_background_repairs = [repair for repair in background_repairs if repair.get("applied_to_final")]
+        repaired_base = paste_assets(base, final_background_repairs)
         styled_image = paste_assets(repaired_base, placed_assets)
         protected_text_regions = text_manifest.get("text_regions", [])
         save_png(restore_regions(styled_image, base, protected_text_regions), final_image)
@@ -66,7 +70,7 @@ class ComposeStage(PipelineStage):
             "placed_assets": placed_assets,
             "protected_text_regions": protected_text_regions,
             "notes": [
-                "Raster compositor pasted placeholder background repair patches and styled assets, then restored protected text regions from the source image."
+                "Raster compositor skipped placeholder background repair overlays in final output, pasted styled assets, then restored protected text regions from the source image."
             ],
         }
         manifest_path = paths.artifact("compose_manifest.json")
@@ -86,7 +90,8 @@ class ComposeStage(PipelineStage):
                 "composition_preview": str(preview_path),
             },
             notes=[
-                f"Composited {len(background_repairs)} background repair placeholders and {len(placed_assets)} styled assets.",
+                f"Skipped {len(background_repairs) - len(final_background_repairs)} placeholder background repair overlays.",
+                f"Composited {len(final_background_repairs)} real background repairs and {len(placed_assets)} styled assets.",
                 f"Restored {len(protected_text_regions)} protected text regions from the source image.",
             ],
         )
@@ -96,3 +101,7 @@ def _read_optional_manifest(path: Path) -> dict:
     if not path.exists():
         return {}
     return read_json(path)
+
+
+def _is_placeholder_repair(repair: dict) -> bool:
+    return repair.get("source") == "placeholder_background_repair" or bool(repair.get("placeholder_visual"))

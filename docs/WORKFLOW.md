@@ -153,11 +153,12 @@ Places generated elements back into the base image.
 
 Current behavior:
 
-- Places placeholder background repair patches.
+- Records placeholder background repair patches but does not paste them into `final.png`.
 - Alpha-composites styled PNG assets onto a raster base.
 - Restores protected text regions from the source image.
 - Writes `final.png`.
 - Writes a composition preview.
+- Skips placeholder background repair overlays in `final.png`; they remain visible only in debug previews and manifests.
 
 Future upgrades:
 

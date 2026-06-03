@@ -357,7 +357,10 @@ When lightweight style transfer cannot run, `actual_adapter` becomes `placeholde
       "asset_id": "repair_cutout_mask_det_primary_buttons_001",
       "bbox": [64, 64, 256, 128],
       "generated_asset_path": "04_background_repair/repairs/repair_cutout_mask_det_primary_buttons_001.png",
-      "mode": "background_repair_placeholder"
+      "mode": "background_repair_placeholder",
+      "source": "placeholder_background_repair",
+      "placeholder_visual": "inpaint_patch_marker",
+      "applied_to_final": false
     }
   ],
   "placed_assets": [
@@ -377,6 +380,8 @@ When lightweight style transfer cannot run, `actual_adapter` becomes `placeholde
   ]
 }
 ```
+
+Placeholder background repair patches are visible debug artifacts only. `06_compose/final.png` skips repairs with `applied_to_final = false` so colored inpainting placeholders and selection-like boxes do not appear in the final output.
 
 ## Review Manifest
 
