@@ -2,6 +2,39 @@
 
 This project keeps model integrations optional. The pipeline should still run when model dependencies or checkpoints are missing.
 
+## Lightweight Detection
+
+DesignUI can use a lightweight local detector for the `02_detect` stage when `algorithms.detector` is set to `lightweight_detector`.
+
+Current behavior:
+
+- Manual regions remain authoritative. If the user draws boxes, those boxes become detections.
+- For SVG inputs, `LightweightDetector` extracts candidate regions from SVG rectangles.
+- For PNG/JPG inputs, it uses Pillow-based background-difference, edge detection, connected components, and simple box merging.
+- If no candidates are found or detection fails, `DetectStage` falls back to `PlaceholderDetector`.
+
+This is not a semantic model. It proposes visually salient regions and assigns them to requested elements in order. YOLO, Grounding DINO, Grounded SAM, or VLM region proposal adapters can replace it later behind the same detection contract.
+
+Environment variables:
+
+```powershell
+$env:DESIGNUI_LIGHTWEIGHT_DETECT_MAX_DIM="720"
+$env:DESIGNUI_LIGHTWEIGHT_DETECT_MIN_AREA="0.0025"
+```
+
+### Smoke Test
+
+```powershell
+.\.venv\Scripts\python.exe -B -m ui_auto_gen.cli run --config configs\sample_lightweight_detector_job.json --run-id lightweight_detector_smoke
+```
+
+Successful runs should record:
+
+```text
+actual_adapter = lightweight_detector
+fallback = null
+```
+
 ## SAM2 Tiny Segmentation
 
 DesignUI can use SAM2.1 tiny for the `03_segment` stage when `algorithms.segmenter` is set to `sam2`.

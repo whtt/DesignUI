@@ -97,7 +97,7 @@ Model-backed stages should use small adapters:
 
 ```text
 adapters/detector.py
-  DetectorAdapter -> PlaceholderDetector -> future YoloDetector / GroundedSamDetector
+  DetectorAdapter -> PlaceholderDetector -> LightweightDetector -> future YoloDetector / GroundedSamDetector
 adapters/ocr.py
   OcrProtectAdapter -> PlaceholderOcrProtector -> RapidOcrProtector -> future PaddleOcrProtector / VlmOcrProtector
 adapters/segmenter.py
@@ -113,6 +113,8 @@ adapters/reviewer.py
 ```
 
 Only the adapter implementation should know model-specific details. The stage output contract should remain stable.
+
+Lightweight detection is optional. `DetectStage` attempts `LightweightDetector` only when `algorithms.detector` requests `lightweight_detector`; otherwise it uses the placeholder detector. The current implementation uses SVG rectangle parsing for SVG inputs and Pillow-based edge/background connected components for raster images. It is a region-proposal algorithm, not a semantic detector.
 
 SAM2 is optional. `SegmentStage` attempts `Sam2TinySegmenter` only when `algorithms.segmenter` requests `sam2`; otherwise it uses the placeholder segmenter. If SAM2 dependencies, checkpoint, device, or model initialization fail, the stage records a fallback reason and completes with placeholder masks.
 

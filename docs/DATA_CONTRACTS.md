@@ -107,6 +107,8 @@ All contracts include a `schema_version` field. Breaking changes should incremen
   "requested_algorithm": "yolo26",
   "actual_adapter": "placeholder_detector",
   "manual_regions_used": true,
+  "model": null,
+  "fallback": null,
   "debug_artifacts": {
     "detection_preview": "02_detect/detection_preview.png"
   },
@@ -124,6 +126,41 @@ All contracts include a `schema_version` field. Breaking changes should incremen
 ```
 
 `bbox` uses `[x1, y1, x2, y2]` pixel coordinates in the ingested base image coordinate system.
+
+When lightweight detection runs successfully, `actual_adapter` becomes `lightweight_detector`, `model` records the local region-proposal metadata, and detections include proposal diagnostics:
+
+```json
+{
+  "schema_version": "1.0",
+  "requested_algorithm": "lightweight_detector",
+  "actual_adapter": "lightweight_detector",
+  "manual_regions_used": false,
+  "model": {
+    "model_family": "classical_region_proposal",
+    "model_size": "tiny",
+    "engine": "pillow_connected_components",
+    "max_dimension": 720,
+    "min_area_ratio": 0.0025
+  },
+  "fallback": null,
+  "detections": [
+    {
+      "detection_id": "det_primary_button_001",
+      "element_id": "primary_button",
+      "label": "button",
+      "bbox": [64, 320, 624, 480],
+      "confidence": 0.7957,
+      "source": "lightweight_detector",
+      "proposal": {
+        "area_ratio": 0.17284,
+        "edge_density": 0.0
+      }
+    }
+  ]
+}
+```
+
+When lightweight detection cannot find candidates, `actual_adapter` becomes `placeholder_detector` and `fallback` records `requested_adapter`, `fallback_adapter`, and `reason`.
 
 ## Text Protect Manifest
 
@@ -396,7 +433,7 @@ Placeholder background repair patches are visible debug artifacts only. `06_comp
     {
       "type": "placeholder_pipeline",
       "severity": "info",
-      "message": "Pipeline contracts passed, but detection, style transfer, and composition still use placeholder or contract-only behavior."
+      "message": "Pipeline contracts passed, but composition still uses placeholder or contract-only behavior."
     }
   ],
   "checks": [

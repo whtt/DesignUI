@@ -47,7 +47,10 @@ Finds candidate UI elements from the plan.
 Current behavior:
 
 - Uses manual rectangle selections when present.
-- Otherwise creates deterministic placeholder boxes.
+- Uses lightweight local region proposals when `algorithms.detector = lightweight_detector`.
+- For SVG inputs, extracts candidate boxes from SVG rectangles.
+- For PNG/JPG inputs, uses edge/background differences and connected components.
+- Falls back to deterministic placeholder boxes if lightweight detection cannot find candidate regions.
 - Writes raster detection previews.
 
 Future upgrades:

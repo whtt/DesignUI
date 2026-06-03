@@ -54,7 +54,9 @@ class ContractReviewer(ReviewAdapter):
                 }
             )
 
-        placeholder_parts = ["detection", "composition"]
+        placeholder_parts = ["composition"]
+        if detection_manifest.get("actual_adapter") == "placeholder_detector":
+            placeholder_parts.append("detection")
         if not segmentation_manifest or segmentation_manifest.get("actual_adapter") == "placeholder_segmenter":
             placeholder_parts.append("segmentation")
         if not text_protect_manifest or text_protect_manifest.get("actual_adapter") == "placeholder_ocr_protector":
@@ -69,7 +71,8 @@ class ContractReviewer(ReviewAdapter):
                     "message": (
                         "Pipeline contracts passed, but "
                         + _join_parts(placeholder_parts)
-                        + " still use placeholder or contract-only behavior."
+                        + _verb_for_parts(placeholder_parts)
+                        + " placeholder or contract-only behavior."
                     ),
                 }
             )
@@ -95,3 +98,7 @@ def _join_parts(parts: list[str]) -> str:
     if len(parts) <= 2:
         return " and ".join(parts)
     return ", ".join(parts[:-1]) + ", and " + parts[-1]
+
+
+def _verb_for_parts(parts: list[str]) -> str:
+    return " still uses" if len(parts) == 1 else " still use"

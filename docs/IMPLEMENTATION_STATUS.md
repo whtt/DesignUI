@@ -2,7 +2,7 @@
 
 本文档记录当前本地 UI 和自动化 UI 图生成 pipeline 的真实接入状态。
 
-结论：当前版本已经把“本地 UI -> 生成 job config -> 跑完整 pipeline -> 产出 run artifacts -> 展示调试图和 stage 详情”的工程链路接通。SAM2.1 tiny 分割、RapidOCR 轻量 OCR 和轻量本地风格迁移已经作为可选本地能力接入；真实检测、inpainting、参数化 UI 重绘、大模型风格生成和视觉自审等能力仍未接入。
+结论：当前版本已经把“本地 UI -> 生成 job config -> 跑完整 pipeline -> 产出 run artifacts -> 展示调试图和 stage 详情”的工程链路接通。轻量本地区域检测、SAM2.1 tiny 分割、RapidOCR 轻量 OCR 和轻量本地风格迁移已经作为可选本地能力接入；语义检测、开放词汇检测、inpainting、参数化 UI 重绘、大模型风格生成和视觉自审等能力仍未接入。
 
 ## 已完成项
 
@@ -140,6 +140,18 @@
 - Verified local run: CLI can use `actual_adapter = lightweight_style_transfer_adapter`, `model.engine = pillow`, `fallback = null`.
 - Still not connected: ControlNet, IPAdapter, LoRA, ComfyUI workflows, ONNX neural style-transfer checkpoints, parameterized UI redraw, and asset-library replacement.
 
+### Lightweight detection
+
+- Completed: added optional `LightweightDetector` for `algorithms.detector = lightweight_detector`.
+- Completed: added `configs/sample_lightweight_detector_job.json` for lightweight detection smoke tests.
+- Completed: `02_detect/detection_manifest.json` now records `model` and `fallback` metadata.
+- Completed: manual regions remain authoritative and are used before automatic region proposals.
+- Completed: SVG inputs can be detected through SVG rectangle parsing.
+- Completed: PNG/JPG inputs can be detected through Pillow-based edge/background connected components.
+- Completed: when lightweight detection finds no candidates or fails, the pipeline falls back to `PlaceholderDetector` and still completes.
+- Verified local run: CLI can use `actual_adapter = lightweight_detector`, `fallback = null`.
+- Still not connected: YOLO26, Grounding DINO, Grounded SAM, semantic UI class detection, VLM region proposals, NMS tuning, and label-aware region matching.
+
 ### 文档
 
 - 已完成：需求文档 `docs/PRD.md`。
@@ -175,14 +187,16 @@
 
 ### 检测算法
 
-- 占位：下拉框里的 `YOLO26`、`Grounded SAM`、`VLM 区域提议` 目前只会被记录。
-- 当前实际执行：`PlaceholderDetector`。
+- 已接入：下拉框里的 `轻量检测器` 会请求本地轻量检测 adapter。
+- 当前可选真实执行：`LightweightDetector`，会基于 SVG 矩形或 PNG/JPG 边缘/背景差异生成区域提议。
+- 当前默认执行：`PlaceholderDetector`。
 - 已接入：手动矩形圈选优先于占位检测框。
 - 未接入：YOLO26 检测。
 - 未接入：Grounding DINO / Grounded SAM 开放词汇检测。
 - 未接入：VLM 区域提议。
 - 未接入：检测置信度阈值配置。
-- 未接入：重复框合并和 NMS。
+- 初步接入：轻量检测器包含简单框合并。
+- 未接入：生产级重复框合并、NMS 和类别感知过滤。
 
 ### 分割算法
 
@@ -260,18 +274,18 @@
 
 ## 当前 UI 中容易误解的地方
 
-- “检测算法”下拉框现在不是实际切换模型，只是记录用户选择。
+- “检测算法”下拉框中的 `轻量检测器` 已有实际本地区域提议行为；YOLO/Grounded/VLM 检测选项仍未接入。
 - “分割算法”下拉框中的 `SAM2` 已有实际分割行为；其他分割选项仍未接入。
 - “OCR”下拉框中的 `RapidOCR` 已有实际 OCR 行为；其他 OCR 选项仍未接入。
 - “风格替换”下拉框中的 `轻量风格迁移` 已有实际本地风格处理行为；其他风格选项仍未接入。
 - “自审”下拉框现在只有契约检查真实运行。
-- “最终结果”目前多数情况下等于输入底图或文生图占位底图。
-- “参考图”目前只参与保存和记录，还没有参与生成。
+- “最终结果”目前会执行基础 raster 合成，但还不具备真实生成资产的光影、边缘和全局一致性修复。
+- “参考图”目前会参与轻量风格迁移；还没有接入 IPAdapter、CLIP style embedding 或风格 token 提取。
 
 ## 下一批建议优先完成
 
 1. 扩展手动 correction UI：polygon/lasso/brush mask。
-2. 接入真实检测模型或更高质量 OCR 文本回归检查。
+2. 接入语义检测/开放词汇检测模型，或更高质量 OCR 文本回归检查。
 3. 增加运行历史列表和 run 详情页。
 4. 将背景修复占位升级为真实 inpainting adapter。
 5. 增加 OCR 文本内容回归检查。

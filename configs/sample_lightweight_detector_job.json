@@ -1,0 +1,48 @@
+{
+  "schema_version": "1.0",
+  "project_name": "sample_dashboard_restyle_lightweight_detector",
+  "base_image": "examples/base_placeholder.svg",
+  "target_elements": [
+    {
+      "id": "primary_button",
+      "name": "primary action button",
+      "type_hint": "button",
+      "action": "replace_style",
+      "style": "glassmorphism blue accent",
+      "keep_text": true
+    },
+    {
+      "id": "stat_cards",
+      "name": "dashboard stat cards",
+      "type_hint": "card",
+      "action": "restyle",
+      "style": "minimal dark dashboard cards",
+      "keep_text": true
+    },
+    {
+      "id": "avatar",
+      "name": "user avatar",
+      "type_hint": "avatar",
+      "action": "replace_asset",
+      "style": "soft 3D clay illustration",
+      "keep_text": false
+    }
+  ],
+  "algorithms": {
+    "detector": "lightweight_detector",
+    "segmenter": "sam2",
+    "ocr": "rapidocr",
+    "style": "lightweight_style_transfer",
+    "review": "contract_review"
+  },
+  "global_style": {
+    "description": "quiet enterprise dashboard with crisp spacing",
+    "palette": ["#111827", "#2563EB", "#22C55E"],
+    "corner_radius": 10,
+    "shadow": "soft"
+  },
+  "output": {
+    "formats": ["image", "json"],
+    "preserve_layout": true
+  }
+}
