@@ -99,7 +99,7 @@ Model-backed stages should use small adapters:
 adapters/detector.py
   DetectorAdapter -> PlaceholderDetector -> future YoloDetector / GroundedSamDetector
 adapters/ocr.py
-  OcrProtectAdapter -> PlaceholderOcrProtector -> future PaddleOcrProtector / VlmOcrProtector
+  OcrProtectAdapter -> PlaceholderOcrProtector -> RapidOcrProtector -> future PaddleOcrProtector / VlmOcrProtector
 adapters/segmenter.py
   SegmenterAdapter -> PlaceholderSegmenter
 adapters/sam2.py
@@ -115,6 +115,8 @@ adapters/reviewer.py
 Only the adapter implementation should know model-specific details. The stage output contract should remain stable.
 
 SAM2 is optional. `SegmentStage` attempts `Sam2TinySegmenter` only when `algorithms.segmenter` requests `sam2`; otherwise it uses the placeholder segmenter. If SAM2 dependencies, checkpoint, device, or model initialization fail, the stage records a fallback reason and completes with placeholder masks.
+
+RapidOCR is optional. `TextProtectStage` attempts `RapidOcrProtector` only when `algorithms.ocr` requests `rapidocr`; otherwise it uses the placeholder OCR protector. If RapidOCR or ONNX Runtime is unavailable, the stage records a fallback reason and completes with placeholder text locks.
 
 ## Visual Debug Artifacts
 

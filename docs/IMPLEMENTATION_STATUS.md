@@ -2,7 +2,7 @@
 
 本文档记录当前本地 UI 和自动化 UI 图生成 pipeline 的真实接入状态。
 
-结论：当前版本已经把“本地 UI -> 生成 job config -> 跑完整 pipeline -> 产出 run artifacts -> 展示调试图和 stage 详情”的工程链路接通。真实检测、分割、OCR、抠图、风格迁移、视觉自审等模型能力仍未接入，当前仍以占位 adapter 为主。
+结论：当前版本已经把“本地 UI -> 生成 job config -> 跑完整 pipeline -> 产出 run artifacts -> 展示调试图和 stage 详情”的工程链路接通。SAM2.1 tiny 分割和 RapidOCR 轻量 OCR 已经作为可选本地模型接入；真实检测、抠图、风格迁移、视觉自审等模型能力仍未接入，当前仍以占位 adapter 为主。
 
 ## 已完成项
 
@@ -104,7 +104,7 @@
 - Completed: added `04_background_repair`, which writes placeholder repair manifests, patch PNG files, and `background_repair_preview.png`.
 - Completed: background repair regions are labeled `INPAINT TODO` and use `placeholder_visual = inpaint_patch_marker`.
 - Completed: UI now displays text protection and background repair previews as independent debug cards.
-- Still not connected: real OCR text recognition, real text content regression, and real inpainting models.
+- Still not connected: real OCR text content regression and real inpainting models.
 
 ### SAM2 tiny segmentation
 
@@ -116,6 +116,16 @@
 - Completed local deployment: `.venv` uses Python 3.10 with CPU PyTorch and SAM2 installed.
 - Completed local deployment: `models/sam2/sam2.1_hiera_tiny.pt` is downloaded locally and ignored by Git.
 - Verified local run: UI and CLI can use `actual_adapter = sam2_tiny_segmenter`, `device = cpu`, `fallback = null`.
+
+### RapidOCR lightweight OCR
+
+- Completed: added optional `RapidOcrProtector` for `algorithms.ocr = rapidocr`.
+- Completed: added `configs/sample_rapidocr_job.json` for RapidOCR-requested smoke tests.
+- Completed: `02_ocr_protect/text_protect_manifest.json` now records `model` and `fallback` metadata.
+- Completed: RapidOCR outputs real text boxes, recognized text, confidence scores, and polygon points.
+- Completed: when RapidOCR dependencies or inference fail, the pipeline falls back to `PlaceholderOcrProtector` and still completes.
+- Completed local deployment: `.venv` uses RapidOCR with ONNX Runtime on CPU.
+- Verified local run: CLI can use `actual_adapter = rapidocr_protector`, `fallback = null`.
 
 ### 文档
 
@@ -163,9 +173,9 @@
 
 ### 分割算法
 
-- 占位：下拉框里的 `SAM2`、`YOLO26 Seg`、`Mask Refiner` 目前只会被记录。
-- 当前实际执行：`PlaceholderSegmenter`。
-- 未接入：SAM/SAM2 mask 生成。
+- 已接入：下拉框里的 `SAM2` 会请求可选本地 SAM2.1 tiny。
+- 当前可选真实执行：`Sam2TinySegmenter`，会从检测框生成真实 mask。
+- 当前默认执行：`PlaceholderSegmenter`。
 - 未接入：YOLO26 segmentation。
 - 未接入：mask 边缘精修。
 - 未接入：透明 PNG mask 输出。
@@ -173,8 +183,9 @@
 
 ### OCR
 
-- 占位：OCR 下拉框目前只会被记录。
-- 当前实际执行：`PlaceholderOcrProtector`，会生成文字保护占位区域。
+- 已接入：OCR 下拉框中的 `RapidOCR` 会请求真实轻量 OCR。
+- 当前可选真实执行：`RapidOcrProtector`，会生成真实文字框、识别文本、置信度和 polygon。
+- 当前默认执行：`PlaceholderOcrProtector`，会生成文字保护占位区域。
 - 未接入：PaddleOCR、docTR、VLM OCR。
 - 已接入占位：文字区域保护 manifest、预览图，以及合成阶段原图恢复。
 - 未接入：文字重新排版。
@@ -234,8 +245,8 @@
 ## 当前 UI 中容易误解的地方
 
 - “检测算法”下拉框现在不是实际切换模型，只是记录用户选择。
-- “分割算法”下拉框现在不是实际切换模型，只是记录用户选择。
-- “OCR”下拉框现在没有实际 OCR 行为。
+- “分割算法”下拉框中的 `SAM2` 已有实际分割行为；其他分割选项仍未接入。
+- “OCR”下拉框中的 `RapidOCR` 已有实际 OCR 行为；其他 OCR 选项仍未接入。
 - “风格替换”下拉框现在没有实际生成行为。
 - “自审”下拉框现在只有契约检查真实运行。
 - “最终结果”目前多数情况下等于输入底图或文生图占位底图。
@@ -244,7 +255,7 @@
 ## 下一批建议优先完成
 
 1. 扩展手动 correction UI：polygon/lasso/brush mask。
-2. 接入第一个真实模型，优先建议从分割或 OCR 开始。
+2. 接入真实检测模型或更高质量 OCR 文本回归检查。
 3. 增加运行历史列表和 run 详情页。
 4. 将背景修复占位升级为真实 inpainting adapter。
 5. 增加 OCR 文本内容回归检查。

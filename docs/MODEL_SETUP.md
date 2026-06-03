@@ -92,3 +92,57 @@ As of the latest local deployment:
 - SAM2: installed from the GitHub zip under `external/sam2-main`.
 - Checkpoint: `models/sam2/sam2.1_hiera_tiny.pt`.
 - Verified run: `actual_adapter = sam2_tiny_segmenter`, `device = cpu`, `fallback = null`.
+
+## RapidOCR Lightweight OCR
+
+DesignUI can use RapidOCR for the `02_ocr_protect` stage when `algorithms.ocr` is set to `rapidocr`.
+
+Current behavior:
+
+- If `rapidocr` and `onnxruntime` are available, `RapidOcrProtector` runs local CPU OCR and writes detected text boxes, recognized text, confidence, polygon points, and model metadata.
+- If RapidOCR is missing or inference fails, `TextProtectStage` falls back to `PlaceholderOcrProtector`.
+- The text protection manifest records `requested_algorithm`, `actual_adapter`, `model`, and `fallback`.
+
+### Install
+
+RapidOCR is optional and is not included in `requirements.txt`.
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install rapidocr onnxruntime
+```
+
+RapidOCR may download its ONNX model files on first use. In the current local deployment those files live inside `.venv`, which is ignored by Git.
+
+Environment variable:
+
+```powershell
+$env:DESIGNUI_RAPIDOCR_MIN_CONFIDENCE="0.45"
+```
+
+### Run The UI With RapidOCR Enabled
+
+Use the virtual environment Python:
+
+```powershell
+.\.venv\Scripts\python.exe -B -m ui_auto_gen.cli serve --port 8765
+```
+
+Then choose `RapidOCR` in the OCR dropdown.
+
+### Smoke Test
+
+```powershell
+.\.venv\Scripts\python.exe -B -m ui_auto_gen.cli run --config configs\sample_rapidocr_job.json --run-id rapidocr_smoke
+```
+
+If RapidOCR cannot run, this command should still complete with `actual_adapter = placeholder_ocr_protector` and a recorded fallback reason.
+
+## Current RapidOCR Local Deployment
+
+As of the latest local deployment:
+
+- Python runtime: `.venv` created with Python 3.10.
+- OCR engine: RapidOCR with ONNX Runtime.
+- GPU: not required.
+- Verified run: `actual_adapter = rapidocr_protector`, `fallback = null`.
+- First-use model files: stored under `.venv` and ignored by Git.

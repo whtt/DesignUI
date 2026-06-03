@@ -132,6 +132,8 @@ All contracts include a `schema_version` field. Breaking changes should incremen
   "schema_version": "1.0",
   "requested_algorithm": "placeholder_ocr",
   "actual_adapter": "placeholder_ocr_protector",
+  "model": null,
+  "fallback": null,
   "debug_artifacts": {
     "text_protect_preview": "02_ocr_protect/text_protect_preview.png"
   },
@@ -151,6 +153,42 @@ All contracts include a `schema_version` field. Breaking changes should incremen
   ]
 }
 ```
+
+When RapidOCR runs successfully, `actual_adapter` becomes `rapidocr_protector`, `model` records the RapidOCR/ONNX Runtime metadata, and `text_regions` include real OCR fields:
+
+```json
+{
+  "schema_version": "1.0",
+  "requested_algorithm": "rapidocr",
+  "actual_adapter": "rapidocr_protector",
+  "model": {
+    "model_family": "rapidocr",
+    "engine": "onnxruntime",
+    "min_confidence": 0.45,
+    "elapsed_seconds": 2.016
+  },
+  "fallback": null,
+  "text_regions": [
+    {
+      "region_id": "ocr_001",
+      "detection_id": "det_primary_button_001",
+      "element_id": "primary_button",
+      "region_path": "02_ocr_protect/text_regions/ocr_001.json",
+      "bbox": [21, 22, 182, 41],
+      "polygon": [[21.0, 22.0], [182.0, 22.0], [182.0, 41.0], [21.0, 41.0]],
+      "text": "Submit",
+      "confidence": 0.98,
+      "source": "rapidocr_protector",
+      "model": {
+        "model_family": "rapidocr",
+        "engine": "onnxruntime"
+      }
+    }
+  ]
+}
+```
+
+When RapidOCR cannot run, `actual_adapter` becomes `placeholder_ocr_protector` and `fallback` records `requested_adapter`, `fallback_adapter`, and `reason`.
 
 ## Segmentation Manifest
 
@@ -302,9 +340,22 @@ When SAM2 cannot run, `actual_adapter` becomes `placeholder_segmenter` and `fall
 ```json
 {
   "schema_version": "1.0",
+  "requested_algorithm": "contract_review",
+  "actual_adapter": "contract_review",
   "pass": true,
   "score": 0.75,
-  "issues": [],
-  "checks": []
+  "issues": [
+    {
+      "type": "placeholder_pipeline",
+      "severity": "info",
+      "message": "Pipeline contracts passed, but detection, style transfer, and composition still use placeholder or contract-only behavior."
+    }
+  ],
+  "checks": [
+    {
+      "name": "final_image_exists",
+      "pass": true
+    }
+  ]
 }
 ```

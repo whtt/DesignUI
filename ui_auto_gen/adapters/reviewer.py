@@ -15,6 +15,8 @@ class ReviewAdapter(ABC):
         detection_manifest: dict[str, Any],
         style_manifest: dict[str, Any],
         compose_manifest: dict[str, Any],
+        segmentation_manifest: dict[str, Any] | None = None,
+        text_protect_manifest: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         raise NotImplementedError
 
@@ -28,6 +30,8 @@ class ContractReviewer(ReviewAdapter):
         detection_manifest: dict[str, Any],
         style_manifest: dict[str, Any],
         compose_manifest: dict[str, Any],
+        segmentation_manifest: dict[str, Any] | None = None,
+        text_protect_manifest: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         issues = []
         checks = []
@@ -50,13 +54,23 @@ class ContractReviewer(ReviewAdapter):
                 }
             )
 
-        issues.append(
-            {
-                "type": "placeholder_pipeline",
-                "severity": "info",
-                "message": "Pipeline contracts passed, but detection, segmentation, style transfer, and composition are placeholders.",
-            }
-        )
+        placeholder_parts = ["detection", "style transfer", "composition"]
+        if not segmentation_manifest or segmentation_manifest.get("actual_adapter") == "placeholder_segmenter":
+            placeholder_parts.append("segmentation")
+        if not text_protect_manifest or text_protect_manifest.get("actual_adapter") == "placeholder_ocr_protector":
+            placeholder_parts.append("OCR")
+        if placeholder_parts:
+            issues.append(
+                {
+                    "type": "placeholder_pipeline",
+                    "severity": "info",
+                    "message": (
+                        "Pipeline contracts passed, but "
+                        + _join_parts(placeholder_parts)
+                        + " still use placeholder or contract-only behavior."
+                    ),
+                }
+            )
 
         passed = all(check["pass"] for check in checks)
         score = 0.75 if passed else 0.25
@@ -73,3 +87,9 @@ def _check(name: str, passed: bool) -> dict[str, object]:
         "name": name,
         "pass": passed,
     }
+
+
+def _join_parts(parts: list[str]) -> str:
+    if len(parts) <= 2:
+        return " and ".join(parts)
+    return ", ".join(parts[:-1]) + ", and " + parts[-1]

@@ -18,8 +18,9 @@
 - Placeholder OCR/text protection stage.
 - Placeholder background repair stage.
 - Optional SAM2.1 tiny segmenter with safe placeholder fallback.
+- Optional RapidOCR lightweight OCR adapter with safe placeholder fallback.
 - Future polygon/lasso/brush mask correction.
-- Future real OCR adapter.
+- Future OCR text regression and higher-accuracy OCR adapters.
 - YOLO26 detector adapter for known UI classes.
 - Grounded detector adapter for open-vocabulary prompts.
 - SAM/SAM2 segmenter adapter.

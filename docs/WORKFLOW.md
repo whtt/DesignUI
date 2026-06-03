@@ -62,7 +62,10 @@ Creates text protection regions before any replacement assets are generated.
 
 Current behavior:
 
-- Writes placeholder text-region manifests from detected element boxes.
+- Uses RapidOCR when `algorithms.ocr = rapidocr` and local OCR dependencies are available.
+- Writes detected text boxes, recognized text, confidence, polygon points, and model metadata for real RapidOCR runs.
+- Falls back to placeholder text locks if RapidOCR cannot run.
+- In placeholder mode, writes text-region manifests from detected element boxes.
 - Writes a raster text protection preview.
 - Marks protected areas with `OCR LOCK TODO`.
 - Compose restores these regions from the source image so placeholder generated assets do not cover them.
