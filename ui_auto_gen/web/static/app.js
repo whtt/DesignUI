@@ -19,6 +19,11 @@ const compositionBaseImage = document.querySelector("#compositionBaseImage");
 const compositionOverlay = document.querySelector("#compositionOverlay");
 const compositionLayerList = document.querySelector("#compositionLayerList");
 const applyCompositionButton = document.querySelector("#applyCompositionButton");
+const runDetailPanel = document.querySelector("#runDetailPanel");
+const detailRunTitle = document.querySelector("#detailRunTitle");
+const detailCompareGrid = document.querySelector("#detailCompareGrid");
+const detailReviewList = document.querySelector("#detailReviewList");
+const detailStageGrid = document.querySelector("#detailStageGrid");
 const baseImageInput = document.querySelector("#baseImage");
 const referenceImageInput = document.querySelector("#referenceImage");
 const basePreview = document.querySelector("#basePreview");
@@ -193,6 +198,7 @@ runButton.addEventListener("click", async () => {
     renderDebugImages(data.debug_images || {});
     renderAssetPanel(data.cutout_assets || [], data.styled_assets || data.generated_assets || []);
     renderCompositionEditor(data);
+    renderRunDetails(data);
     resultImage.src = withCacheBust(data.final_image_url);
     resultImage.hidden = false;
     resultEmpty.hidden = true;
@@ -397,6 +403,7 @@ function setResultSectionsVisible(visible) {
   placeholderGuide.hidden = !visible;
   debugGallery.hidden = !visible;
   assetPanel.hidden = !visible;
+  runDetailPanel.hidden = !visible;
   if (!visible) compositionEditor.hidden = true;
 }
 
@@ -561,12 +568,14 @@ async function restoreRunPreview(run) {
   saveFinalButton.hidden = !run.final_image_url;
   setResultSectionsVisible(true);
   resetDebugImages();
+  renderDebugImages(run.debug_images || {});
   renderAssetPanel(run.cutout_assets || [], run.styled_assets || run.generated_assets || []);
   renderCompositionEditor(run);
+  renderRunDetails(run);
 }
 
 async function fetchRunDetails(run) {
-  if (!run?.run_id || run.background_canvas_url) return run;
+  if (!run?.run_id || run.stage_details) return run;
   try {
     const response = await fetch(`/api/runs/${encodeURIComponent(run.run_id)}`);
     const data = await response.json();
@@ -597,6 +606,7 @@ async function deleteRunCache(runId) {
       setResultSectionsVisible(false);
       renderAssetPanel([], []);
       renderCompositionEditor(null);
+      renderRunDetails(null);
       resetDebugImages();
     }
     renderRunHistory(data.runs || []);
@@ -624,6 +634,7 @@ async function clearRunCache() {
     setResultSectionsVisible(false);
     renderAssetPanel([], []);
     renderCompositionEditor(null);
+    renderRunDetails(null);
     resetDebugImages();
     setStages("");
     renderRunHistory([]);
@@ -632,6 +643,177 @@ async function clearRunCache() {
   } finally {
     clearRunsButton.disabled = false;
     clearRunsButton.textContent = "清除缓存";
+  }
+}
+
+function renderRunDetails(run) {
+  detailCompareGrid.innerHTML = "";
+  detailReviewList.innerHTML = "";
+  detailStageGrid.innerHTML = "";
+  if (!run) {
+    runDetailPanel.hidden = true;
+    return;
+  }
+
+  runDetailPanel.hidden = false;
+  detailRunTitle.textContent = run.run_id || "阶段详情";
+  renderDetailCompare(run);
+  renderReviewDetails(run.review || {});
+  renderStageDetails(run);
+}
+
+function renderDetailCompare(run) {
+  const items = [
+    { label: "原图", url: run.base_image_url },
+    { label: "修复底板", url: run.background_canvas_url },
+    { label: "最终图", url: run.final_image_url },
+  ].filter((item) => item.url);
+
+  items.forEach((item) => {
+    const card = document.createElement("article");
+    card.className = "detail-compare-card";
+    const title = document.createElement("b");
+    title.textContent = item.label;
+    const image = document.createElement("img");
+    image.src = withCacheBust(item.url);
+    image.alt = item.label;
+    card.appendChild(title);
+    card.appendChild(image);
+    detailCompareGrid.appendChild(card);
+  });
+}
+
+function renderReviewDetails(review) {
+  const status = document.createElement("div");
+  status.className = "review-status";
+  const score = review.score === undefined || review.score === null ? "-" : review.score;
+  status.textContent = `自审：${review.pass ? "通过" : "需关注"} · 分数 ${score}`;
+  detailReviewList.appendChild(status);
+
+  const checks = review.checks || [];
+  const issues = review.issues || [];
+  if (!checks.length && !issues.length) {
+    const empty = document.createElement("div");
+    empty.className = "detail-empty";
+    empty.textContent = "暂无自审结果";
+    detailReviewList.appendChild(empty);
+    return;
+  }
+
+  checks.slice(0, 12).forEach((check) => {
+    const item = document.createElement("span");
+    item.className = check.pass ? "review-chip pass" : "review-chip fail";
+    item.textContent = `${check.pass ? "通过" : "失败"} ${check.name}`;
+    detailReviewList.appendChild(item);
+  });
+
+  issues.slice(0, 8).forEach((issue) => {
+    const item = document.createElement("div");
+    item.className = `review-issue ${issue.severity || "info"}`;
+    item.textContent = `${issue.severity || "info"} · ${issue.message || issue.type}`;
+    detailReviewList.appendChild(item);
+  });
+}
+
+function renderStageDetails(run) {
+  const stages = run.stage_details || [];
+  if (!stages.length) {
+    detailStageGrid.textContent = "暂无阶段详情";
+    return;
+  }
+
+  stages.forEach((stage) => {
+    const card = document.createElement("article");
+    card.className = "detail-stage-card";
+
+    const header = document.createElement("header");
+    const title = document.createElement("b");
+    title.textContent = `${stage.name} ${stage.label || ""}`.trim();
+    const status = document.createElement("span");
+    status.className = `stage-pill ${stage.status}`;
+    status.textContent = stage.status || "missing";
+    header.appendChild(title);
+    header.appendChild(status);
+
+    const summary = document.createElement("p");
+    summary.textContent = compactSummary(stage.summary || {});
+
+    const actions = document.createElement("div");
+    actions.className = "stage-actions";
+    if (stage.manifest_url) {
+      const link = document.createElement("a");
+      link.className = "ghost-link";
+      link.href = stage.manifest_url;
+      link.target = "_blank";
+      link.textContent = "Manifest";
+      actions.appendChild(link);
+    }
+    if (stage.can_rerun) {
+      const rerunButton = document.createElement("button");
+      rerunButton.className = "small-button";
+      rerunButton.type = "button";
+      rerunButton.textContent = "重跑";
+      rerunButton.addEventListener("click", () => rerunStage(stage.name, rerunButton));
+      actions.appendChild(rerunButton);
+    }
+
+    const previews = document.createElement("div");
+    previews.className = "stage-preview-list";
+    Object.entries(stage.preview_urls || {}).forEach(([key, url]) => {
+      const preview = document.createElement("a");
+      preview.href = url;
+      preview.target = "_blank";
+      preview.textContent = key;
+      previews.appendChild(preview);
+    });
+
+    card.appendChild(header);
+    card.appendChild(summary);
+    card.appendChild(actions);
+    if (previews.children.length) card.appendChild(previews);
+    detailStageGrid.appendChild(card);
+  });
+}
+
+function compactSummary(summary) {
+  const entries = Object.entries(summary).filter(([, value]) => value !== undefined && value !== null && value !== "");
+  if (!entries.length) return "暂无摘要";
+  return entries
+    .slice(0, 4)
+    .map(([key, value]) => `${key}: ${typeof value === "object" ? JSON.stringify(value) : value}`)
+    .join(" · ");
+}
+
+async function rerunStage(stageName, button) {
+  if (!latestRun?.run_id) return;
+  const previousText = button.textContent;
+  button.disabled = true;
+  button.textContent = "重跑中";
+  statusTitle.textContent = `重跑阶段：${stageName}`;
+  try {
+    const response = await fetch("/api/rerun-stage", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ run_id: latestRun.run_id, stage: stageName }),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "阶段重跑失败");
+    latestRun = data;
+    statusTitle.textContent = `已重跑：${stageName}`;
+    setStages("complete", data.stages || []);
+    renderDebugImages(data.debug_images || {});
+    renderAssetPanel(data.cutout_assets || [], data.styled_assets || data.generated_assets || []);
+    renderCompositionEditor(data);
+    renderRunDetails(data);
+    resultImage.src = withCacheBust(data.final_image_url);
+    resultImage.hidden = false;
+    resultEmpty.hidden = true;
+    await loadRunHistory();
+  } catch (error) {
+    statusTitle.textContent = error.message;
+  } finally {
+    button.disabled = false;
+    button.textContent = previousText;
   }
 }
 

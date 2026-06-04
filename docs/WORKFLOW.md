@@ -180,12 +180,16 @@ Checks output quality and contract completeness.
 Current behavior:
 
 - Verifies basic artifacts and reports placeholder limitations.
+- Checks final image size against the source image.
+- Checks placed styled assets and background repairs stay within image bounds.
+- Checks background repair area is not unexpectedly large.
+- Records mask-to-bbox area ratios to catch empty or overly broad masks.
+- Reports protected text overlap risk before final text restoration.
 
 Future upgrades:
 
 - VLM visual review.
 - OCR text preservation check.
-- Layout overlap detection.
 - Style consistency scoring.
 
 ### 08 Export
@@ -199,6 +203,7 @@ Current behavior:
 - Records individual cutout assets from `04_cutout`.
 - Records individual styled assets from `05_style`.
 - The local UI can save final images, cutout assets, or styled assets into `workspace/saved_outputs/`.
+- The local UI exposes a run detail view with stage manifests, preview artifacts, before/after comparison, and review results.
 
 Future upgrades:
 
@@ -215,3 +220,9 @@ Stages should be retryable from their own inputs. When a stage fails or produces
 - Segmentation issue: rerun mask refinement only.
 - Style issue: regenerate only the failed element.
 - Composition issue: recompose without regenerating assets.
+
+Current local UI support:
+
+- Rerun a selected stage from an existing run cache.
+- The server clears that stage and the dependent downstream stages, then rewrites manifests and `run_summary.json`.
+- Example: rerunning `04_background_repair` reruns background repair, composition, review, and export while preserving existing style assets.

@@ -17,6 +17,7 @@ class ReviewStage(PipelineStage):
         segmentation_manifest = read_json(context.run_root / "03_segment" / "segmentation_manifest.json")
         style_manifest = read_json(context.run_root / "05_style" / "style_manifest.json")
         compose_manifest = read_json(context.run_root / "06_compose" / "compose_manifest.json")
+        ingest_manifest = read_json(context.run_root / "00_ingest" / "ingest_manifest.json")
 
         adapter = ContractReviewer()
         review = adapter.review(
@@ -26,6 +27,7 @@ class ReviewStage(PipelineStage):
             compose_manifest=compose_manifest,
             segmentation_manifest=segmentation_manifest,
             text_protect_manifest=text_protect_manifest,
+            ingest_manifest=ingest_manifest,
         )
         manifest = {
             "schema_version": "1.0",

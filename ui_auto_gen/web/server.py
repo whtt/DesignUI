@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import unquote
 
-from ui_auto_gen.pipeline import PipelineRunner
+from ui_auto_gen.pipeline import STAGE_DEPENDENCIES, PipelineRunner
 from ui_auto_gen.paths import repo_root
 from ui_auto_gen.raster import load_rgba_image, paste_assets, restore_regions, save_png
 from ui_auto_gen.utils import read_json, utc_now_iso, write_json
@@ -84,6 +84,9 @@ class UiServer:
                 if self.path == "/api/recompose":
                     self._handle_recompose(output_root)
                     return
+                if self.path == "/api/rerun-stage":
+                    self._handle_rerun_stage(output_root)
+                    return
                 self._send_json({"error": "Not found"}, HTTPStatus.NOT_FOUND)
 
             def do_DELETE(self) -> None:
@@ -111,6 +114,7 @@ class UiServer:
                     final_image = Path(export_artifacts["final_image"])
                     summary = Path(export_artifacts["summary"])
                     response = {
+                        **_run_details(output_root, context.run_id, ensure_canvas=True),
                         "run_id": context.run_id,
                         "run_root": str(context.run_root),
                         "summary_path": str(summary),
@@ -143,6 +147,14 @@ class UiServer:
                     payload = self._read_json_body()
                     recomposed = _recompose_run(output_root, payload)
                     self._send_json(recomposed, HTTPStatus.OK)
+                except Exception as exc:
+                    self._send_json({"error": str(exc)}, HTTPStatus.BAD_REQUEST)
+
+            def _handle_rerun_stage(self, output_root: Path) -> None:
+                try:
+                    payload = self._read_json_body()
+                    rerun = _rerun_stage(output_root, payload)
+                    self._send_json(rerun, HTTPStatus.OK)
                 except Exception as exc:
                     self._send_json({"error": str(exc)}, HTTPStatus.BAD_REQUEST)
 
@@ -595,6 +607,8 @@ def _run_details(output_root: Path, run_id: str, ensure_canvas: bool = False) ->
         if final_image and final_image.exists() and _is_relative_to(final_image.resolve(), root)
         else None
     )
+    stage_details = _stage_details(root, run_root, manifest)
+    review_manifest = _read_json_if_exists(run_root / "07_review" / "review_manifest.json")
     return {
         "run_id": summary.get("run_id") or manifest.get("run_id") or run_root.name,
         "project_name": summary.get("project_name") or manifest.get("project_name"),
@@ -608,10 +622,142 @@ def _run_details(output_root: Path, run_id: str, ensure_canvas: bool = False) ->
         "base_image_url": _run_base_image_url(root, run_root),
         "background_canvas_url": _run_background_canvas_url(root, run_root, create_missing=ensure_canvas),
         "preserve_layout": _run_preserve_layout(run_root),
+        "debug_images": _existing_debug_images(root, run_root),
         "cutout_assets": _collect_cutout_assets(root, run_root),
         "styled_assets": _collect_styled_assets(root, run_root),
+        "review": {
+            "pass": review_manifest.get("pass"),
+            "score": review_manifest.get("score"),
+            "issues": review_manifest.get("issues", []),
+            "checks": review_manifest.get("checks", []),
+        },
+        "stages": [
+            {
+                "name": stage["name"],
+                "status": stage["status"],
+                "manifest_url": stage.get("manifest_url"),
+            }
+            for stage in stage_details
+        ],
+        "stage_details": stage_details,
+        "rerunnable_stages": list(STAGE_DEPENDENCIES.keys()),
         "mtime": run_root.stat().st_mtime,
     }
+
+
+def _stage_details(output_root: Path, run_root: Path, run_manifest: dict[str, Any]) -> list[dict[str, Any]]:
+    details = []
+    stage_manifests = run_manifest.get("stages", {})
+    for stage_name in STAGE_DEPENDENCIES:
+        manifest_path = _stage_manifest_path(run_root, stage_name, stage_manifests.get(stage_name, {}))
+        manifest = _read_json_if_exists(manifest_path) if manifest_path else {}
+        preview_urls = _debug_artifact_urls(output_root, manifest)
+        details.append(
+            {
+                "name": stage_name,
+                "label": _stage_label(stage_name),
+                "status": stage_manifests.get(stage_name, {}).get("status", "missing"),
+                "manifest_path": str(manifest_path) if manifest_path and manifest_path.exists() else None,
+                "manifest_url": _artifact_url(output_root, manifest_path)
+                if manifest_path and manifest_path.exists() and _is_relative_to(manifest_path.resolve(), output_root.resolve())
+                else None,
+                "preview_urls": preview_urls,
+                "summary": _stage_summary(stage_name, manifest),
+                "can_rerun": stage_name in STAGE_DEPENDENCIES,
+            }
+        )
+    return details
+
+
+def _stage_manifest_path(run_root: Path, stage_name: str, manifest_entry: dict[str, Any]) -> Path | None:
+    raw_path = str(manifest_entry.get("manifest") or "")
+    if raw_path:
+        return Path(raw_path)
+    default_names = {
+        "00_ingest": "ingest_manifest.json",
+        "01_plan": "plan_manifest.json",
+        "02_detect": "detection_manifest.json",
+        "02_ocr_protect": "text_protect_manifest.json",
+        "03_segment": "segmentation_manifest.json",
+        "04_cutout": "cutout_manifest.json",
+        "04_background_repair": "background_repair_manifest.json",
+        "05_style": "style_manifest.json",
+        "06_compose": "compose_manifest.json",
+        "07_review": "review_manifest.json",
+        "08_export": "run_summary.json",
+    }
+    filename = default_names.get(stage_name)
+    return run_root / stage_name / filename if filename else None
+
+
+def _debug_artifact_urls(output_root: Path, manifest: dict[str, Any]) -> dict[str, str]:
+    urls = {}
+    for key, value in manifest.get("debug_artifacts", {}).items():
+        path = Path(str(value))
+        if path.exists() and path.is_file() and _is_relative_to(path.resolve(), output_root.resolve()):
+            urls[key] = _artifact_url(output_root, path)
+    return urls
+
+
+def _existing_debug_images(output_root: Path, run_root: Path) -> dict[str, str]:
+    images = {}
+    run_manifest = _read_json_if_exists(run_root / "manifest.json")
+    for detail in _stage_details(output_root, run_root, run_manifest):
+        images.update(detail.get("preview_urls", {}))
+    return images
+
+
+def _stage_summary(stage_name: str, manifest: dict[str, Any]) -> dict[str, Any]:
+    if not manifest:
+        return {}
+    if stage_name == "00_ingest":
+        return manifest.get("base_image", {})
+    if stage_name == "01_plan":
+        return {"elements": len(manifest.get("elements", []))}
+    if stage_name == "02_detect":
+        return {"detections": len(manifest.get("detections", [])), "adapter": manifest.get("actual_adapter")}
+    if stage_name == "02_ocr_protect":
+        return {"text_regions": len(manifest.get("text_regions", [])), "adapter": manifest.get("actual_adapter")}
+    if stage_name == "03_segment":
+        return {"masks": len(manifest.get("masks", [])), "adapter": manifest.get("actual_adapter")}
+    if stage_name == "04_cutout":
+        return {"cutouts": len(manifest.get("cutouts", []))}
+    if stage_name == "04_background_repair":
+        return {
+            "repairs": len(manifest.get("repairs", [])),
+            "adapter": manifest.get("actual_adapter"),
+            "skipped": manifest.get("skipped"),
+        }
+    if stage_name == "05_style":
+        return {"styled_assets": len(manifest.get("styled_assets", [])), "adapter": manifest.get("actual_adapter")}
+    if stage_name == "06_compose":
+        return {"placed_assets": len(manifest.get("placed_assets", [])), "final_image": manifest.get("final_image")}
+    if stage_name == "07_review":
+        return {
+            "pass": manifest.get("pass"),
+            "score": manifest.get("score"),
+            "issues": len(manifest.get("issues", [])),
+        }
+    if stage_name == "08_export":
+        return {"final_image": manifest.get("final_image")}
+    return {}
+
+
+def _stage_label(stage_name: str) -> str:
+    labels = {
+        "00_ingest": "Ingest",
+        "01_plan": "Plan",
+        "02_detect": "Detect",
+        "02_ocr_protect": "OCR",
+        "03_segment": "Segment",
+        "04_cutout": "Cutout",
+        "04_background_repair": "Repair",
+        "05_style": "Style",
+        "06_compose": "Compose",
+        "07_review": "Review",
+        "08_export": "Export",
+    }
+    return labels.get(stage_name, stage_name)
 
 
 def _list_runs(output_root: Path) -> list[dict[str, Any]]:
@@ -623,11 +769,43 @@ def _list_runs(output_root: Path) -> list[dict[str, Any]]:
     run_roots.sort(key=lambda path: path.stat().st_mtime, reverse=True)
     runs = []
     for run_root in run_roots[:RUN_HISTORY_LIMIT]:
-        runs.append(_run_details(root, run_root.name, ensure_canvas=False))
+        runs.append(_run_list_item(root, run_root))
 
     for run in runs:
         run.pop("mtime", None)
     return runs
+
+
+def _run_list_item(output_root: Path, run_root: Path) -> dict[str, Any]:
+    root = output_root.resolve()
+    summary_path = run_root / "08_export" / "run_summary.json"
+    manifest_path = run_root / "manifest.json"
+    summary = _read_json_if_exists(summary_path)
+    manifest = _read_json_if_exists(manifest_path)
+    raw_final_image = str(summary.get("final_image") or "")
+    final_image = Path(raw_final_image) if raw_final_image else None
+    final_image_url = (
+        _artifact_url(root, final_image)
+        if final_image and final_image.exists() and _is_relative_to(final_image.resolve(), root)
+        else None
+    )
+    return {
+        "run_id": summary.get("run_id") or manifest.get("run_id") or run_root.name,
+        "project_name": summary.get("project_name") or manifest.get("project_name"),
+        "created_at": manifest.get("created_at"),
+        "completed_at": manifest.get("completed_at"),
+        "status": "failed" if manifest.get("failed_at") else ("completed" if summary else "partial"),
+        "summary_path": str(summary_path) if summary_path.exists() else None,
+        "summary_url": _artifact_url(root, summary_path) if summary_path.exists() else None,
+        "final_image_path": str(final_image) if final_image and final_image.exists() else None,
+        "final_image_url": final_image_url,
+        "base_image_url": _run_base_image_url(root, run_root),
+        "background_canvas_url": _run_background_canvas_url(root, run_root, create_missing=False),
+        "preserve_layout": _run_preserve_layout(run_root),
+        "cutout_assets": _collect_cutout_assets(root, run_root),
+        "styled_assets": _collect_styled_assets(root, run_root),
+        "mtime": run_root.stat().st_mtime,
+    }
 
 
 def _clear_runs(output_root: Path) -> list[str]:
@@ -759,6 +937,35 @@ def _recompose_run(output_root: Path, payload: dict[str, Any]) -> dict[str, Any]
         "composition_preview_url": _artifact_url(root, preview_path),
         "background_canvas_url": _artifact_url(root, background_canvas_path),
         "placed_assets": placed_assets,
+    }
+
+
+def _rerun_stage(output_root: Path, payload: dict[str, Any]) -> dict[str, Any]:
+    run_id = str(payload.get("run_id") or "")
+    stage_name = str(payload.get("stage") or "")
+    if not run_id or "/" in run_id or "\\" in run_id:
+        raise ValueError("Invalid run id.")
+    if stage_name not in STAGE_DEPENDENCIES:
+        raise ValueError("Invalid rerun stage.")
+
+    root = output_root.resolve()
+    run_root = (root / run_id).resolve()
+    if not _is_relative_to(run_root, root) or not run_root.exists() or not run_root.is_dir():
+        raise ValueError("Run cache does not exist.")
+
+    runner = PipelineRunner(output_root=root)
+    context, results = runner.rerun_from_stage(run_root=run_root, stage_name=stage_name)
+    return {
+        **_run_details(root, context.run_id, ensure_canvas=True),
+        "rerun_from_stage": stage_name,
+        "rerun_stages": [result.stage for result in results],
+        "rerun_notes": [
+            {
+                "stage": result.stage,
+                "notes": result.notes,
+            }
+            for result in results
+        ],
     }
 
 
