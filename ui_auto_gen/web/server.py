@@ -68,6 +68,13 @@ class UiServer:
                 if self.path == "/api/save-artifact":
                     self._handle_save_artifact(output_root)
                     return
+                if self.path == "/api/delete-run":
+                    self._handle_delete_run(output_root)
+                    return
+                if self.path == "/api/clear-runs":
+                    deleted = _clear_runs(output_root)
+                    self._send_json({"deleted": deleted, "runs": []}, HTTPStatus.OK)
+                    return
                 self._send_json({"error": "Not found"}, HTTPStatus.NOT_FOUND)
 
             def do_DELETE(self) -> None:
@@ -124,6 +131,15 @@ class UiServer:
                     payload = self._read_json_body()
                     saved = _save_artifact(output_root, payload)
                     self._send_json(saved, HTTPStatus.OK)
+                except Exception as exc:
+                    self._send_json({"error": str(exc)}, HTTPStatus.BAD_REQUEST)
+
+            def _handle_delete_run(self, output_root: Path) -> None:
+                try:
+                    payload = self._read_json_body()
+                    run_id = str(payload.get("run_id") or "")
+                    deleted = _delete_run(output_root, run_id)
+                    self._send_json({"deleted": deleted, "runs": _list_runs(output_root)}, HTTPStatus.OK)
                 except Exception as exc:
                     self._send_json({"error": str(exc)}, HTTPStatus.BAD_REQUEST)
 

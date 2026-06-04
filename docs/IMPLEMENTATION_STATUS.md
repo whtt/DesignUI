@@ -48,8 +48,8 @@
 - 已完成：返回每个 stage 的 artifact URLs。
 - 已完成：通过 `/artifacts/...` 访问运行产物。
 - 已完成：`GET /api/runs` 返回历史 run 列表。
-- 已完成：`DELETE /api/runs` 清空 run 缓存。
-- 已完成：`DELETE /api/runs/{run_id}` 清除单条 run 缓存。
+- 已完成：`POST /api/clear-runs` 清空 run 缓存；同时保留 `DELETE /api/runs` 兼容入口。
+- 已完成：`POST /api/delete-run` 清除单条 run 缓存；同时保留 `DELETE /api/runs/{run_id}` 兼容入口。
 - 已完成：`POST /api/save-artifact` 将运行产物复制保存到 `workspace/saved_outputs/`。
 - 已完成：通过 `/saved/...` 访问已保存产物。
 

@@ -536,11 +536,12 @@ function restoreRunPreview(run) {
 }
 
 async function deleteRunCache(runId) {
-  if (!confirm(`确定清除 ${runId} 这条缓存吗？已保存到 workspace/saved_outputs 的图片不会被删除。`)) {
-    return;
-  }
   try {
-    const response = await fetch(`/api/runs/${encodeURIComponent(runId)}`, { method: "DELETE" });
+    const response = await fetch("/api/delete-run", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ run_id: runId }),
+    });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || "清除失败");
     if (latestRun?.run_id === runId) {
@@ -567,7 +568,7 @@ async function clearRunCache() {
   clearRunsButton.disabled = true;
   clearRunsButton.textContent = "清除中";
   try {
-    const response = await fetch("/api/runs", { method: "DELETE" });
+    const response = await fetch("/api/clear-runs", { method: "POST" });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || "清除失败");
     latestRun = null;
