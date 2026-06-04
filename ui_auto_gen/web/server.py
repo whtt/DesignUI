@@ -464,28 +464,29 @@ def _existing_background_canvas(run_root: Path) -> Path | None:
 
 def _ensure_background_canvas(output_root: Path, run_root: Path) -> Path | None:
     existing = _existing_background_canvas(run_root)
-    if existing:
-        return existing
 
     canvas_path = run_root / "06_compose" / "background_canvas.png"
 
     try:
         ingest_manifest = read_json(run_root / "00_ingest" / "ingest_manifest.json")
     except Exception:
-        return None
+        return existing
 
     width = int(ingest_manifest["base_image"].get("width") or 960)
     height = int(ingest_manifest["base_image"].get("height") or 540)
     source_image = Path(ingest_manifest["base_image"]["run_path"])
     if not source_image.exists():
-        return None
+        return existing
 
     background_manifest = _read_json_if_exists(run_root / "04_background_repair" / "background_repair_manifest.json")
+    cutout_mask_by_id = _cutout_mask_by_id(run_root)
     background_repairs = [
         {
             "asset_id": repair["repair_id"],
             "bbox": repair["bbox"],
             "generated_asset_path": repair.get("repair_asset_path"),
+            "repair_mask_path": _repair_mask_path(repair, cutout_mask_by_id),
+            "repair_scope": repair.get("repair_scope") or "segmentation_mask",
             "mode": "background_repair",
             "source": repair.get("source"),
             "placeholder_visual": repair.get("placeholder_visual"),
@@ -704,11 +705,14 @@ def _recompose_run(output_root: Path, payload: dict[str, Any]) -> dict[str, Any]
         )
     placed_assets.sort(key=lambda item: item["z_index"])
 
+    cutout_mask_by_id = _cutout_mask_by_id(run_root)
     background_repairs = [
         {
             "asset_id": repair["repair_id"],
             "bbox": repair["bbox"],
             "generated_asset_path": repair.get("repair_asset_path"),
+            "repair_mask_path": _repair_mask_path(repair, cutout_mask_by_id),
+            "repair_scope": repair.get("repair_scope") or "segmentation_mask",
             "mode": "background_repair",
             "source": repair.get("source"),
             "placeholder_visual": repair.get("placeholder_visual"),
@@ -772,6 +776,19 @@ def _normalize_bbox(value: Any, image_size: tuple[int, int]) -> list[int]:
 
 def _is_placeholder_repair(repair: dict[str, Any]) -> bool:
     return repair.get("source") == "placeholder_background_repair" or bool(repair.get("placeholder_visual"))
+
+
+def _cutout_mask_by_id(run_root: Path) -> dict[str, str]:
+    cutout_manifest = _read_json_if_exists(run_root / "04_cutout" / "cutout_manifest.json")
+    return {
+        str(cutout.get("cutout_id")): str(cutout.get("mask_png_path"))
+        for cutout in cutout_manifest.get("cutouts", [])
+        if cutout.get("cutout_id") and cutout.get("mask_png_path")
+    }
+
+
+def _repair_mask_path(repair: dict[str, Any], cutout_mask_by_id: dict[str, str]) -> str | None:
+    return repair.get("repair_mask_path") or cutout_mask_by_id.get(str(repair.get("cutout_id")))
 
 
 def _save_artifact(output_root: Path, payload: dict[str, Any]) -> dict[str, str]:

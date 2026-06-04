@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageChops, ImageDraw, ImageFont
 
 
 RGBA = tuple[int, int, int, int]
@@ -126,8 +126,37 @@ def paste_assets(base: Image.Image, assets: list[dict[str, Any]]) -> Image.Image
         overlay = load_rgba_image(path)
         x1, y1, x2, y2 = clamp_bbox(asset["bbox"], image.size)
         overlay = overlay.resize((x2 - x1, y2 - y1))
+        overlay = _constrain_overlay_alpha(overlay, asset, (x1, y1, x2, y2), image.size)
         image.alpha_composite(overlay, (x1, y1))
     return image
+
+
+def _constrain_overlay_alpha(
+    overlay: Image.Image,
+    asset: dict[str, Any],
+    bbox: tuple[int, int, int, int],
+    image_size: tuple[int, int],
+) -> Image.Image:
+    mask_path = asset.get("repair_mask_path") or asset.get("mask_png_path")
+    if not mask_path:
+        return overlay
+
+    path = Path(str(mask_path))
+    if not path.exists():
+        return overlay
+
+    x1, y1, x2, y2 = bbox
+    with Image.open(path) as mask_image:
+        mask = mask_image.convert("L")
+
+    if mask.size == image_size:
+        mask = mask.crop((x1, y1, x2, y2))
+    elif mask.size != overlay.size:
+        mask = mask.resize(overlay.size)
+
+    constrained = overlay.convert("RGBA").copy()
+    constrained.putalpha(ImageChops.multiply(constrained.getchannel("A"), mask))
+    return constrained
 
 
 def restore_regions(target: Image.Image, source: Image.Image, regions: list[dict[str, Any]]) -> Image.Image:

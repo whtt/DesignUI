@@ -27,6 +27,8 @@ class ComposeStage(PipelineStage):
                 "asset_id": repair["repair_id"],
                 "bbox": repair["bbox"],
                 "generated_asset_path": repair.get("repair_asset_path"),
+                "repair_mask_path": repair.get("repair_mask_path"),
+                "repair_scope": repair.get("repair_scope"),
                 "mode": "background_repair" if not _is_placeholder_repair(repair) else "background_repair_placeholder",
                 "source": repair.get("source"),
                 "placeholder_visual": repair.get("placeholder_visual"),

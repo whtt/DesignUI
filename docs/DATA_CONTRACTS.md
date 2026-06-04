@@ -378,6 +378,8 @@ When lightweight style transfer cannot run, `actual_adapter` becomes `placeholde
       "cutout_id": "cutout_mask_det_primary_buttons_001",
       "repair_path": "04_background_repair/repairs/repair_cutout_mask_det_primary_buttons_001.json",
       "repair_asset_path": "04_background_repair/repairs/repair_cutout_mask_det_primary_buttons_001.png",
+      "repair_mask_path": "03_segment/masks/mask_det_primary_buttons_001.png",
+      "repair_scope": "segmentation_mask",
       "bbox": [64, 64, 256, 128],
       "source": "lightweight_background_repair",
       "placeholder_visual": null,
@@ -387,7 +389,7 @@ When lightweight style transfer cannot run, `actual_adapter` becomes `placeholde
 }
 ```
 
-When `output.preserve_layout = true`, background repair is skipped and `repairs` is empty. When lightweight repair fails or placeholder repair is selected, the stage records a fallback and may write `placeholder_visual = inpaint_patch_marker`.
+When `output.preserve_layout = true`, background repair is skipped and `repairs` is empty. When lightweight repair fails or placeholder repair is selected, the stage records a fallback and may write `placeholder_visual = inpaint_patch_marker`. For lightweight repair, `bbox` is only the local crop window; the generated repair PNG alpha is constrained by `repair_mask_path` when `repair_scope = segmentation_mask`.
 
 ## Compose Manifest
 
@@ -405,6 +407,8 @@ When `output.preserve_layout = true`, background repair is skipped and `repairs`
       "asset_id": "repair_cutout_mask_det_primary_buttons_001",
       "bbox": [64, 64, 256, 128],
       "generated_asset_path": "04_background_repair/repairs/repair_cutout_mask_det_primary_buttons_001.png",
+      "repair_mask_path": "03_segment/masks/mask_det_primary_buttons_001.png",
+      "repair_scope": "segmentation_mask",
       "mode": "background_repair",
       "source": "lightweight_background_repair",
       "placeholder_visual": null,

@@ -59,6 +59,8 @@ class PlaceholderBackgroundRepair(BackgroundRepairAdapter):
                 "cutout_id": cutout["cutout_id"],
                 "bbox": [x1, y1, x2, y2],
                 "repair_asset_path": str(repair_asset_path),
+                "repair_mask_path": cutout.get("mask_png_path"),
+                "repair_scope": "segmentation_mask" if cutout.get("mask_png_path") else "bbox",
                 "placeholder_visual": "inpaint_patch_marker",
                 "future_adapter": "background_inpainting",
                 "note": "Placeholder background repair patch. Future implementation should inpaint the exposed background under replaced elements.",
@@ -70,6 +72,8 @@ class PlaceholderBackgroundRepair(BackgroundRepairAdapter):
                     "cutout_id": cutout["cutout_id"],
                     "repair_path": str(repair_path),
                     "repair_asset_path": str(repair_asset_path),
+                    "repair_mask_path": cutout.get("mask_png_path"),
+                    "repair_scope": "segmentation_mask" if cutout.get("mask_png_path") else "bbox",
                     "bbox": [x1, y1, x2, y2],
                     "source": self.adapter_name,
                     "placeholder_visual": "inpaint_patch_marker",
@@ -109,7 +113,13 @@ class LightweightBackgroundRepair(BackgroundRepairAdapter):
             x1, y1, x2, y2 = clamp_bbox(cutout["bbox"], image_size)
             repair_path = repairs_dir / f"{repair_id}.json"
             repair_asset_path = repairs_dir / f"{repair_id}.png"
-            repair_asset = _lightweight_patch(base, (x1, y1, x2, y2), self.blur_radius)
+            repair_asset = _lightweight_patch(
+                base,
+                (x1, y1, x2, y2),
+                self.blur_radius,
+                mask_path=Path(cutout["mask_png_path"]) if cutout.get("mask_png_path") else None,
+                image_size=image_size,
+            )
             save_png(repair_asset, repair_asset_path)
             payload = {
                 "schema_version": "1.0",
@@ -117,6 +127,8 @@ class LightweightBackgroundRepair(BackgroundRepairAdapter):
                 "cutout_id": cutout["cutout_id"],
                 "bbox": [x1, y1, x2, y2],
                 "repair_asset_path": str(repair_asset_path),
+                "repair_mask_path": cutout.get("mask_png_path"),
+                "repair_scope": "segmentation_mask" if cutout.get("mask_png_path") else "bbox",
                 "source": self.adapter_name,
                 "model": self.model_metadata,
                 "placeholder_visual": None,
@@ -130,6 +142,8 @@ class LightweightBackgroundRepair(BackgroundRepairAdapter):
                     "cutout_id": cutout["cutout_id"],
                     "repair_path": str(repair_path),
                     "repair_asset_path": str(repair_asset_path),
+                    "repair_mask_path": cutout.get("mask_png_path"),
+                    "repair_scope": "segmentation_mask" if cutout.get("mask_png_path") else "bbox",
                     "bbox": [x1, y1, x2, y2],
                     "source": self.adapter_name,
                     "model": self.model_metadata,
@@ -145,7 +159,13 @@ def _repair_color(index: int) -> tuple[int, int, int]:
     return colors[index % len(colors)]
 
 
-def _lightweight_patch(base: Image.Image, bbox: tuple[int, int, int, int], blur_radius: int) -> Image.Image:
+def _lightweight_patch(
+    base: Image.Image,
+    bbox: tuple[int, int, int, int],
+    blur_radius: int,
+    mask_path: Path | None = None,
+    image_size: tuple[int, int] | None = None,
+) -> Image.Image:
     x1, y1, x2, y2 = bbox
     width = x2 - x1
     height = y2 - y1
@@ -159,17 +179,48 @@ def _lightweight_patch(base: Image.Image, bbox: tuple[int, int, int, int], blur_
     local_y1 = y1 - ey1
     local_x2 = local_x1 + width
     local_y2 = local_y1 + height
+    local_bbox = (local_x1, local_y1, local_x2, local_y2)
+    expanded_mask = _mask_for_region(
+        mask_path=mask_path,
+        region=(ex1, ey1, ex2, ey2),
+        region_size=expanded.size,
+        image_size=image_size or base.size,
+    )
+    target_mask = expanded_mask.crop(local_bbox)
 
-    mask = Image.new("L", expanded.size, 255)
-    mask_draw = Image.new("L", expanded.size, 0)
-    mask_draw.paste(255, (local_x1, local_y1, local_x2, local_y2))
-    ring_mask = ImageChops.subtract(mask, mask_draw)
+    full_mask = Image.new("L", expanded.size, 255)
+    ring_mask = ImageChops.subtract(full_mask, expanded_mask)
     ring_color = _mean_color(expanded, ring_mask)
     filled = Image.new("RGBA", expanded.size, ring_color)
     filled.paste(expanded, (0, 0), ring_mask)
     filled = filled.filter(ImageFilter.GaussianBlur(radius=blur_radius))
-    patch = filled.crop((local_x1, local_y1, local_x2, local_y2))
-    return patch.filter(ImageFilter.SMOOTH_MORE)
+    patch = filled.crop(local_bbox).filter(ImageFilter.SMOOTH_MORE).convert("RGBA")
+    patch.putalpha(target_mask)
+    return patch
+
+
+def _mask_for_region(
+    mask_path: Path | None,
+    region: tuple[int, int, int, int],
+    region_size: tuple[int, int],
+    image_size: tuple[int, int],
+) -> Image.Image:
+    if not mask_path or not mask_path.exists():
+        return Image.new("L", region_size, 255)
+
+    with Image.open(mask_path) as mask_image:
+        mask = mask_image.convert("L")
+
+    rx1, ry1, rx2, ry2 = region
+    if mask.size == image_size:
+        return mask.crop(region)
+
+    bbox_width = max(1, rx2 - rx1)
+    bbox_height = max(1, ry2 - ry1)
+    if mask.size == (bbox_width, bbox_height):
+        return mask.resize(region_size)
+
+    return mask.resize(image_size).crop(region)
 
 
 def _mean_color(image: Image.Image, mask: Image.Image) -> tuple[int, int, int, int]:
