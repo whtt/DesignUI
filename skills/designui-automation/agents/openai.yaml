@@ -1,0 +1,4 @@
+interface:
+  display_name: "DesignUI Automation"
+  short_description: "DesignUI workflow and adapter guide"
+  default_prompt: "Use $designui-automation to inspect the DesignUI project, choose the right docs, and implement the requested workflow or adapter change."
