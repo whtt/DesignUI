@@ -27,7 +27,7 @@ class ComposeStage(PipelineStage):
                 "asset_id": repair["repair_id"],
                 "bbox": repair["bbox"],
                 "generated_asset_path": repair.get("repair_asset_path"),
-                "mode": "background_repair_placeholder",
+                "mode": "background_repair" if not _is_placeholder_repair(repair) else "background_repair_placeholder",
                 "source": repair.get("source"),
                 "placeholder_visual": repair.get("placeholder_visual"),
                 "applied_to_final": not _is_placeholder_repair(repair),
@@ -70,7 +70,7 @@ class ComposeStage(PipelineStage):
             "placed_assets": placed_assets,
             "protected_text_regions": protected_text_regions,
             "notes": [
-                "Raster compositor skipped placeholder background repair overlays in final output, pasted styled assets, then restored protected text regions from the source image."
+                "Raster compositor applied real background repairs, skipped placeholder repair overlays, pasted styled assets, then restored protected text regions from the source image."
             ],
         }
         manifest_path = paths.artifact("compose_manifest.json")

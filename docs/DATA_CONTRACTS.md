@@ -360,7 +360,15 @@ When lightweight style transfer cannot run, `actual_adapter` becomes `placeholde
 ```json
 {
   "schema_version": "1.0",
-  "actual_adapter": "placeholder_background_repair",
+  "requested_algorithm": "lightweight_background_repair",
+  "actual_adapter": "lightweight_background_repair",
+  "model": {
+    "model_family": "classical_inpaint_approximation",
+    "engine": "pillow_ring_fill"
+  },
+  "fallback": null,
+  "preserve_layout": false,
+  "skipped": false,
   "debug_artifacts": {
     "background_repair_preview": "04_background_repair/background_repair_preview.png"
   },
@@ -371,13 +379,15 @@ When lightweight style transfer cannot run, `actual_adapter` becomes `placeholde
       "repair_path": "04_background_repair/repairs/repair_cutout_mask_det_primary_buttons_001.json",
       "repair_asset_path": "04_background_repair/repairs/repair_cutout_mask_det_primary_buttons_001.png",
       "bbox": [64, 64, 256, 128],
-      "source": "placeholder_background_repair",
-      "placeholder_visual": "inpaint_patch_marker",
-      "future_adapter": "background_inpainting"
+      "source": "lightweight_background_repair",
+      "placeholder_visual": null,
+      "future_adapter": "large_model_background_inpainting"
     }
   ]
 }
 ```
+
+When `output.preserve_layout = true`, background repair is skipped and `repairs` is empty. When lightweight repair fails or placeholder repair is selected, the stage records a fallback and may write `placeholder_visual = inpaint_patch_marker`.
 
 ## Compose Manifest
 
@@ -394,10 +404,10 @@ When lightweight style transfer cannot run, `actual_adapter` becomes `placeholde
       "asset_id": "repair_cutout_mask_det_primary_buttons_001",
       "bbox": [64, 64, 256, 128],
       "generated_asset_path": "04_background_repair/repairs/repair_cutout_mask_det_primary_buttons_001.png",
-      "mode": "background_repair_placeholder",
-      "source": "placeholder_background_repair",
-      "placeholder_visual": "inpaint_patch_marker",
-      "applied_to_final": false
+      "mode": "background_repair",
+      "source": "lightweight_background_repair",
+      "placeholder_visual": null,
+      "applied_to_final": true
     }
   ],
   "placed_assets": [
@@ -418,7 +428,26 @@ When lightweight style transfer cannot run, `actual_adapter` becomes `placeholde
 }
 ```
 
-Placeholder background repair patches are visible debug artifacts only. `06_compose/final.png` skips repairs with `applied_to_final = false` so colored inpainting placeholders and selection-like boxes do not appear in the final output.
+Real lightweight background repair patches are pasted before styled assets. Placeholder background repair patches are visible debug artifacts only. `06_compose/final.png` skips repairs with `applied_to_final = false` so colored inpainting placeholders and selection-like boxes do not appear in the final output.
+
+Manual composition edits from the local UI are written to `06_compose/compose_custom_manifest.json` and `06_compose/final_custom.png`:
+
+```json
+{
+  "schema_version": "1.0",
+  "final_image": "06_compose/final_custom.png",
+  "composition_source": "manual_recompose",
+  "placed_assets": [
+    {
+      "asset_id": "styled_cutout_mask_det_primary_buttons_001",
+      "bbox": [120, 140, 312, 204],
+      "generated_asset_path": "05_style/styled_assets/styled_cutout_mask_det_primary_buttons_001.png",
+      "mode": "manual_recompose",
+      "z_index": 0
+    }
+  ]
+}
+```
 
 ## Review Manifest
 

@@ -96,7 +96,11 @@ def write_background_repair_preview(
     items = [
         {
             **repair,
-            "preview_label": f"INPAINT TODO {index + 1}",
+            "preview_label": (
+                f"LIGHT REPAIR {index + 1}"
+                if repair.get("source") == "lightweight_background_repair"
+                else f"INPAINT TODO {index + 1}"
+            ),
         }
         for index, repair in enumerate(repairs)
     ]

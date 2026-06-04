@@ -126,6 +126,15 @@
           </label>
 
           <label class="field">
+            <span>背景修复</span>
+            <select id="backgroundRepair">
+              <option value="lightweight_background_repair">轻量背景修复</option>
+              <option value="placeholder_background_repair">占位修复</option>
+              <option value="model_background_inpaint">大模型修复占位</option>
+            </select>
+          </label>
+
+          <label class="field">
             <span>风格替换</span>
             <select id="style">
               <option value="placeholder_style_adapter">占位风格器</option>
@@ -248,7 +257,7 @@
               <span>背景修复预览</span>
               <a id="backgroundRepairPreviewLink" href="#" target="_blank" hidden>打开</a>
             </header>
-            <div id="backgroundRepairPreviewEmpty" class="empty-output compact">运行后显示 inpainting 占位区</div>
+            <div id="backgroundRepairPreviewEmpty" class="empty-output compact">运行后显示背景修复区域</div>
             <img id="backgroundRepairPreview" alt="背景修复预览" hidden />
           </article>
 
@@ -284,6 +293,18 @@
             <h3>风格素材</h3>
             <div id="styleAssetList" class="asset-list">运行后显示风格素材</div>
           </div>
+        </section>
+
+        <section id="compositionEditor" class="composition-editor" hidden>
+          <header>
+            <span>合成意图编辑</span>
+            <button id="applyCompositionButton" class="small-button" type="button">应用合成</button>
+          </header>
+          <div id="compositionSurface" class="composition-surface">
+            <img id="compositionBaseImage" alt="合成底图" draggable="false" />
+            <div id="compositionOverlay" class="composition-overlay"></div>
+          </div>
+          <div id="compositionLayerList" class="composition-layer-list">不保持原布局时可调整素材位置和前后顺序</div>
         </section>
 
         <figure class="final-output">

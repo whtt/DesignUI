@@ -105,7 +105,7 @@ adapters/segmenter.py
 adapters/sam2.py
   SegmenterAdapter -> Sam2TinySegmenter -> future larger SAM2 variants
 adapters/background.py
-  BackgroundRepairAdapter -> PlaceholderBackgroundRepair -> future InpaintingRepairAdapter
+  BackgroundRepairAdapter -> PlaceholderBackgroundRepair -> LightweightBackgroundRepair -> future InpaintingRepairAdapter
 adapters/style.py
   StyleAdapter -> PlaceholderStyleAdapter -> LightweightStyleTransferAdapter -> future ControlNet/IPAdapter adapter
 adapters/reviewer.py
@@ -121,6 +121,8 @@ SAM2 is optional. `SegmentStage` attempts `Sam2TinySegmenter` only when `algorit
 RapidOCR is optional. `TextProtectStage` attempts `RapidOcrProtector` only when `algorithms.ocr` requests `rapidocr`; otherwise it uses the placeholder OCR protector. If RapidOCR or ONNX Runtime is unavailable, the stage records a fallback reason and completes with placeholder text locks.
 
 Lightweight style transfer is optional. `StyleStage` attempts `LightweightStyleTransferAdapter` only when `algorithms.style` requests `lightweight_style_transfer`; otherwise it uses the placeholder style adapter. The current implementation uses Pillow-based color-statistics transfer from a reference image or `global_style.palette`, so it runs locally without GPU or large model dependencies.
+
+Lightweight background repair is optional and layout-aware. `BackgroundRepairStage` skips repair when `output.preserve_layout = true`. When layout preservation is disabled and `algorithms.background_repair = lightweight_background_repair`, it writes local repair patches using surrounding color statistics and blur. Future prompt-guided inpainting adapters can replace this behind the same repair manifest contract.
 
 ## Visual Debug Artifacts
 

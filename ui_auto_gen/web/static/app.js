@@ -13,9 +13,17 @@ const debugGallery = document.querySelector("#debugGallery");
 const assetPanel = document.querySelector("#assetPanel");
 const cutoutAssetList = document.querySelector("#cutoutAssetList");
 const styleAssetList = document.querySelector("#styleAssetList");
+const compositionEditor = document.querySelector("#compositionEditor");
+const compositionSurface = document.querySelector("#compositionSurface");
+const compositionBaseImage = document.querySelector("#compositionBaseImage");
+const compositionOverlay = document.querySelector("#compositionOverlay");
+const compositionLayerList = document.querySelector("#compositionLayerList");
+const applyCompositionButton = document.querySelector("#applyCompositionButton");
 const baseImageInput = document.querySelector("#baseImage");
 const referenceImageInput = document.querySelector("#referenceImage");
 const basePreview = document.querySelector("#basePreview");
+const preserveLayoutInput = document.querySelector("#preserveLayout");
+const backgroundRepairSelect = document.querySelector("#backgroundRepair");
 const selectionSurface = document.querySelector("#selectionSurface");
 const selectionOverlay = document.querySelector("#selectionOverlay");
 const manualRegionList = document.querySelector("#manualRegionList");
@@ -24,6 +32,8 @@ let referencePreview = document.querySelector("#referencePreview");
 let latestRun = null;
 let manualRegions = [];
 let activeSelection = null;
+let compositionPlacements = [];
+let activeCompositionDrag = null;
 
 const debugTargets = {
   detection_preview: {
@@ -93,7 +103,10 @@ referenceImageInput.addEventListener("change", async () => {
 });
 
 basePreview.addEventListener("load", renderManualRegions);
-window.addEventListener("resize", renderManualRegions);
+window.addEventListener("resize", () => {
+  renderManualRegions();
+  renderCompositionOverlay();
+});
 
 selectionSurface.addEventListener("pointerdown", (event) => {
   const point = pointerToNorm(event);
@@ -138,6 +151,8 @@ selectionSurface.addEventListener("pointercancel", () => {
 clearManualRegionsButton.addEventListener("click", clearManualRegions);
 refreshHistoryButton.addEventListener("click", loadRunHistory);
 clearRunsButton.addEventListener("click", clearRunCache);
+preserveLayoutInput.addEventListener("change", updateBackgroundRepairAvailability);
+applyCompositionButton.addEventListener("click", applyManualComposition);
 saveFinalButton.addEventListener("click", () => {
   if (!latestRun?.final_image_url) return;
   saveArtifact({
@@ -155,6 +170,7 @@ runButton.addEventListener("click", async () => {
   resultImage.hidden = true;
   resultEmpty.hidden = false;
   renderAssetPanel([], []);
+  renderCompositionEditor(null);
   setResultSectionsVisible(false);
   latestRun = null;
   resetDebugImages();
@@ -176,6 +192,7 @@ runButton.addEventListener("click", async () => {
     setResultSectionsVisible(true);
     renderDebugImages(data.debug_images || {});
     renderAssetPanel(data.cutout_assets || [], data.styled_assets || data.generated_assets || []);
+    renderCompositionEditor(data);
     resultImage.src = withCacheBust(data.final_image_url);
     resultImage.hidden = false;
     resultEmpty.hidden = true;
@@ -192,6 +209,7 @@ runButton.addEventListener("click", async () => {
 });
 
 loadRunHistory();
+updateBackgroundRepairAvailability();
 
 async function collectPayload() {
   const baseMode = document.querySelector('input[name="baseMode"]:checked').value;
@@ -213,16 +231,24 @@ async function collectPayload() {
     baseMode,
     baseImage: baseFile ? await filePayload(baseFile) : null,
     referenceImage: referenceFile ? await filePayload(referenceFile) : null,
-    preserveLayout: document.querySelector("#preserveLayout").checked,
+    preserveLayout: preserveLayoutInput.checked,
     keepText: document.querySelector("#keepText").checked,
     algorithms: {
       detector: valueOf("#detector"),
       segmenter: valueOf("#segmenter"),
       ocr: valueOf("#ocr"),
+      backgroundRepair: valueOf("#backgroundRepair"),
       style: valueOf("#style"),
       review: valueOf("#review"),
     },
   };
+}
+
+function updateBackgroundRepairAvailability() {
+  backgroundRepairSelect.disabled = preserveLayoutInput.checked;
+  backgroundRepairSelect.title = preserveLayoutInput.checked
+    ? "保持原布局时会跳过背景修复"
+    : "不保持原布局时用于补齐元素移走后的背景";
 }
 
 function addManualRegion(bboxNorm) {
@@ -371,6 +397,7 @@ function setResultSectionsVisible(visible) {
   placeholderGuide.hidden = !visible;
   debugGallery.hidden = !visible;
   assetPanel.hidden = !visible;
+  if (!visible) compositionEditor.hidden = true;
 }
 
 function renderAssetPanel(cutoutAssets, styledAssets) {
@@ -533,6 +560,7 @@ function restoreRunPreview(run) {
   setResultSectionsVisible(true);
   resetDebugImages();
   renderAssetPanel(run.cutout_assets || [], run.styled_assets || run.generated_assets || []);
+  renderCompositionEditor(run);
 }
 
 async function deleteRunCache(runId) {
@@ -553,6 +581,7 @@ async function deleteRunCache(runId) {
       resultEmpty.hidden = false;
       setResultSectionsVisible(false);
       renderAssetPanel([], []);
+      renderCompositionEditor(null);
       resetDebugImages();
     }
     renderRunHistory(data.runs || []);
@@ -579,6 +608,7 @@ async function clearRunCache() {
     resultEmpty.hidden = false;
     setResultSectionsVisible(false);
     renderAssetPanel([], []);
+    renderCompositionEditor(null);
     resetDebugImages();
     setStages("");
     renderRunHistory([]);
@@ -587,6 +617,226 @@ async function clearRunCache() {
   } finally {
     clearRunsButton.disabled = false;
     clearRunsButton.textContent = "清除缓存";
+  }
+}
+
+function renderCompositionEditor(run) {
+  compositionPlacements = [];
+  compositionOverlay.innerHTML = "";
+  compositionLayerList.innerHTML = "";
+  if (!run || run.preserve_layout !== false || !run.base_image_url) {
+    compositionEditor.hidden = true;
+    return;
+  }
+
+  const assets = run.styled_assets || run.generated_assets || [];
+  const usableAssets = assets.filter((asset) => Array.isArray(asset.bbox) && asset.url);
+  if (!usableAssets.length) {
+    compositionEditor.hidden = true;
+    return;
+  }
+
+  compositionEditor.hidden = false;
+  compositionBaseImage.src = withCacheBust(run.base_image_url);
+  compositionPlacements = usableAssets.map((asset, index) => ({
+    asset_id: asset.asset_id,
+    element_id: asset.element_id || asset.asset_id,
+    url: asset.url,
+    bbox: [...asset.bbox],
+    z_index: index,
+  }));
+  compositionBaseImage.addEventListener("load", renderCompositionOverlay, { once: true });
+  renderCompositionOverlay();
+}
+
+function renderCompositionOverlay() {
+  compositionOverlay.innerHTML = "";
+  const rect = compositionContentRect();
+  if (!rect || !compositionPlacements.length) {
+    renderCompositionLayerList();
+    return;
+  }
+  [...compositionPlacements]
+    .sort((a, b) => a.z_index - b.z_index)
+    .forEach((placement) => {
+      const element = document.createElement("div");
+      element.className = "composition-asset";
+      element.dataset.assetId = placement.asset_id;
+      element.style.zIndex = String(placement.z_index + 1);
+
+      const image = document.createElement("img");
+      image.src = withCacheBust(placement.url);
+      image.alt = placement.element_id;
+      const label = document.createElement("b");
+      label.textContent = placement.element_id;
+      element.appendChild(image);
+      element.appendChild(label);
+      positionCompositionElement(element, placement.bbox, rect);
+      element.addEventListener("pointerdown", (event) => startCompositionDrag(event, placement.asset_id));
+      compositionOverlay.appendChild(element);
+    });
+  renderCompositionLayerList();
+}
+
+function compositionContentRect() {
+  const surfaceRect = compositionSurface.getBoundingClientRect();
+  const naturalWidth = compositionBaseImage.naturalWidth || 960;
+  const naturalHeight = compositionBaseImage.naturalHeight || 540;
+  if (!surfaceRect.width || !surfaceRect.height) return null;
+  const surfaceRatio = surfaceRect.width / surfaceRect.height;
+  const imageRatio = naturalWidth / naturalHeight;
+  let width = surfaceRect.width;
+  let height = surfaceRect.height;
+  let left = 0;
+  let top = 0;
+  if (surfaceRatio > imageRatio) {
+    width = surfaceRect.height * imageRatio;
+    left = (surfaceRect.width - width) / 2;
+  } else {
+    height = surfaceRect.width / imageRatio;
+    top = (surfaceRect.height - height) / 2;
+  }
+  return { left, top, width, height, imageWidth: naturalWidth, imageHeight: naturalHeight };
+}
+
+function positionCompositionElement(element, bbox, rect) {
+  const [x1, y1, x2, y2] = bbox;
+  Object.assign(element.style, {
+    left: `${rect.left + (x1 / rect.imageWidth) * rect.width}px`,
+    top: `${rect.top + (y1 / rect.imageHeight) * rect.height}px`,
+    width: `${((x2 - x1) / rect.imageWidth) * rect.width}px`,
+    height: `${((y2 - y1) / rect.imageHeight) * rect.height}px`,
+  });
+}
+
+function startCompositionDrag(event, assetId) {
+  const placement = compositionPlacements.find((item) => item.asset_id === assetId);
+  const rect = compositionContentRect();
+  if (!placement || !rect) return;
+  event.preventDefault();
+  const [x1, y1] = placement.bbox;
+  activeCompositionDrag = {
+    assetId,
+    startX: event.clientX,
+    startY: event.clientY,
+    bbox: [...placement.bbox],
+    originX: x1,
+    originY: y1,
+  };
+  event.currentTarget.setPointerCapture(event.pointerId);
+  event.currentTarget.classList.add("active");
+  event.currentTarget.addEventListener("pointermove", moveCompositionDrag);
+  event.currentTarget.addEventListener("pointerup", endCompositionDrag, { once: true });
+  event.currentTarget.addEventListener("pointercancel", endCompositionDrag, { once: true });
+}
+
+function moveCompositionDrag(event) {
+  if (!activeCompositionDrag) return;
+  const rect = compositionContentRect();
+  const placement = compositionPlacements.find((item) => item.asset_id === activeCompositionDrag.assetId);
+  if (!rect || !placement) return;
+  const dx = ((event.clientX - activeCompositionDrag.startX) / rect.width) * rect.imageWidth;
+  const dy = ((event.clientY - activeCompositionDrag.startY) / rect.height) * rect.imageHeight;
+  const boxWidth = activeCompositionDrag.bbox[2] - activeCompositionDrag.bbox[0];
+  const boxHeight = activeCompositionDrag.bbox[3] - activeCompositionDrag.bbox[1];
+  const nextX = clamp(Math.round(activeCompositionDrag.originX + dx), 0, rect.imageWidth - boxWidth);
+  const nextY = clamp(Math.round(activeCompositionDrag.originY + dy), 0, rect.imageHeight - boxHeight);
+  placement.bbox = [nextX, nextY, nextX + boxWidth, nextY + boxHeight];
+  positionCompositionElement(event.currentTarget, placement.bbox, rect);
+}
+
+function endCompositionDrag(event) {
+  if (event.currentTarget) {
+    event.currentTarget.classList.remove("active");
+    event.currentTarget.removeEventListener("pointermove", moveCompositionDrag);
+  }
+  activeCompositionDrag = null;
+  renderCompositionLayerList();
+}
+
+function renderCompositionLayerList() {
+  compositionLayerList.innerHTML = "";
+  if (!compositionPlacements.length) {
+    compositionLayerList.textContent = "不保持原布局时可调整素材位置和前后顺序";
+    return;
+  }
+  [...compositionPlacements]
+    .sort((a, b) => b.z_index - a.z_index)
+    .forEach((placement) => {
+      const row = document.createElement("div");
+      row.className = "composition-layer-row";
+      const title = document.createElement("b");
+      title.textContent = placement.element_id;
+      const forward = document.createElement("button");
+      forward.className = "small-button";
+      forward.type = "button";
+      forward.textContent = "前移";
+      forward.addEventListener("click", () => moveCompositionLayer(placement.asset_id, 1));
+      const backward = document.createElement("button");
+      backward.className = "small-button";
+      backward.type = "button";
+      backward.textContent = "后移";
+      backward.addEventListener("click", () => moveCompositionLayer(placement.asset_id, -1));
+      row.appendChild(title);
+      row.appendChild(forward);
+      row.appendChild(backward);
+      compositionLayerList.appendChild(row);
+    });
+}
+
+function moveCompositionLayer(assetId, delta) {
+  const placement = compositionPlacements.find((item) => item.asset_id === assetId);
+  if (!placement) return;
+  placement.z_index = clamp(placement.z_index + delta, 0, compositionPlacements.length - 1);
+  normalizeCompositionOrder();
+  renderCompositionOverlay();
+}
+
+function normalizeCompositionOrder() {
+  compositionPlacements
+    .sort((a, b) => a.z_index - b.z_index)
+    .forEach((placement, index) => {
+      placement.z_index = index;
+    });
+}
+
+async function applyManualComposition() {
+  if (!latestRun?.run_id || !compositionPlacements.length) return;
+  applyCompositionButton.disabled = true;
+  applyCompositionButton.textContent = "合成中";
+  try {
+    normalizeCompositionOrder();
+    const response = await fetch("/api/recompose", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        run_id: latestRun.run_id,
+        placements: compositionPlacements.map((placement) => ({
+          asset_id: placement.asset_id,
+          bbox: placement.bbox,
+          z_index: placement.z_index,
+        })),
+      }),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "合成失败");
+    latestRun.final_image_url = data.final_image_url;
+    resultImage.src = withCacheBust(data.final_image_url);
+    resultImage.hidden = false;
+    resultEmpty.hidden = true;
+    if (data.composition_preview_url && debugTargets.composition_preview) {
+      debugTargets.composition_preview.img.src = withCacheBust(data.composition_preview_url);
+      debugTargets.composition_preview.img.hidden = false;
+      debugTargets.composition_preview.empty.hidden = true;
+      debugTargets.composition_preview.link.href = data.composition_preview_url;
+      debugTargets.composition_preview.link.hidden = false;
+    }
+    statusTitle.textContent = `已应用合成：${latestRun.run_id}`;
+  } catch (error) {
+    statusTitle.textContent = error.message;
+  } finally {
+    applyCompositionButton.disabled = false;
+    applyCompositionButton.textContent = "应用合成";
   }
 }
 

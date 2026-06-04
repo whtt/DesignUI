@@ -14,7 +14,9 @@ from urllib.parse import unquote
 
 from ui_auto_gen.pipeline import PipelineRunner
 from ui_auto_gen.paths import repo_root
-from ui_auto_gen.utils import utc_now_iso, write_json
+from ui_auto_gen.raster import load_rgba_image, paste_assets, restore_regions, save_png
+from ui_auto_gen.utils import read_json, utc_now_iso, write_json
+from ui_auto_gen.visual_debug import write_composition_preview
 
 
 STATIC_ROOT = Path(__file__).resolve().parent / "static"
@@ -75,6 +77,9 @@ class UiServer:
                     deleted = _clear_runs(output_root)
                     self._send_json({"deleted": deleted, "runs": []}, HTTPStatus.OK)
                     return
+                if self.path == "/api/recompose":
+                    self._handle_recompose(output_root)
+                    return
                 self._send_json({"error": "Not found"}, HTTPStatus.NOT_FOUND)
 
             def do_DELETE(self) -> None:
@@ -108,6 +113,8 @@ class UiServer:
                         "summary_url": _artifact_url(output_root, summary),
                         "final_image_path": str(final_image),
                         "final_image_url": _artifact_url(output_root, final_image),
+                        "base_image_url": _run_base_image_url(output_root, context.run_root),
+                        "preserve_layout": bool(context.config.get("output", {}).get("preserve_layout", True)),
                         "debug_images": _collect_debug_images(output_root, results),
                         "cutout_assets": _collect_cutout_assets(output_root, context.run_root),
                         "styled_assets": _collect_styled_assets(output_root, context.run_root),
@@ -123,6 +130,14 @@ class UiServer:
                         ],
                     }
                     self._send_json(response, HTTPStatus.OK)
+                except Exception as exc:
+                    self._send_json({"error": str(exc)}, HTTPStatus.BAD_REQUEST)
+
+            def _handle_recompose(self, output_root: Path) -> None:
+                try:
+                    payload = self._read_json_body()
+                    recomposed = _recompose_run(output_root, payload)
+                    self._send_json(recomposed, HTTPStatus.OK)
                 except Exception as exc:
                     self._send_json({"error": str(exc)}, HTTPStatus.BAD_REQUEST)
 
@@ -221,6 +236,7 @@ def _create_job_config(payload: dict[str, Any]) -> Path:
             "detector": algorithms.get("detector", "placeholder_detector"),
             "segmenter": algorithms.get("segmenter", "placeholder_segmenter"),
             "ocr": algorithms.get("ocr", "placeholder_ocr"),
+            "background_repair": algorithms.get("backgroundRepair", "lightweight_background_repair"),
             "style": algorithms.get("style", "placeholder_style_adapter"),
             "review": algorithms.get("review", "contract_review"),
         },
@@ -409,6 +425,17 @@ def _collect_debug_images(output_root: Path, results: list[Any]) -> dict[str, st
     return debug_images
 
 
+def _run_base_image_url(output_root: Path, run_root: Path) -> str | None:
+    ingest_manifest = _read_json_if_exists(run_root / "00_ingest" / "ingest_manifest.json")
+    raw_path = str(ingest_manifest.get("base_image", {}).get("run_path") or "")
+    if not raw_path:
+        return None
+    path = Path(raw_path)
+    if path.exists() and path.is_file() and _is_relative_to(path.resolve(), output_root.resolve()):
+        return _artifact_url(output_root, path)
+    return None
+
+
 def _collect_cutout_assets(output_root: Path, run_root: Path) -> list[dict[str, Any]]:
     cutout_manifest_path = run_root / "04_cutout" / "cutout_manifest.json"
     if not cutout_manifest_path.exists():
@@ -474,9 +501,15 @@ def _collect_styled_assets(output_root: Path, run_root: Path) -> list[dict[str, 
                 "source": asset.get("source"),
                 "path": str(resolved),
                 "url": _artifact_url(output_root, resolved),
+                "bbox": asset.get("bbox"),
             }
         )
     return assets
+
+
+def _run_preserve_layout(run_root: Path) -> bool:
+    config = _read_json_if_exists(run_root / "job_config.json")
+    return bool(config.get("output", {}).get("preserve_layout", True))
 
 
 def _list_runs(output_root: Path) -> list[dict[str, Any]]:
@@ -510,6 +543,8 @@ def _list_runs(output_root: Path) -> list[dict[str, Any]]:
                 "summary_url": _artifact_url(root, summary_path) if summary_path.exists() else None,
                 "final_image_path": str(final_image) if final_image and final_image.exists() else None,
                 "final_image_url": final_image_url,
+                "base_image_url": _run_base_image_url(root, run_root),
+                "preserve_layout": _run_preserve_layout(run_root),
                 "cutout_assets": _collect_cutout_assets(root, run_root),
                 "styled_assets": _collect_styled_assets(root, run_root),
                 "mtime": run_root.stat().st_mtime,
@@ -550,6 +585,114 @@ def _delete_run(output_root: Path, run_id: str) -> str:
     else:
         target.unlink()
     return run_id
+
+
+def _recompose_run(output_root: Path, payload: dict[str, Any]) -> dict[str, Any]:
+    run_id = str(payload.get("run_id") or "")
+    if not run_id or "/" in run_id or "\\" in run_id:
+        raise ValueError("Invalid run id.")
+    root = output_root.resolve()
+    run_root = (root / run_id).resolve()
+    if not _is_relative_to(run_root, root) or not run_root.exists() or not run_root.is_dir():
+        raise ValueError("Run cache does not exist.")
+
+    placements = payload.get("placements", [])
+    if not isinstance(placements, list):
+        raise ValueError("Recompose request requires placements.")
+
+    ingest_manifest = read_json(run_root / "00_ingest" / "ingest_manifest.json")
+    style_manifest = read_json(run_root / "05_style" / "style_manifest.json")
+    background_manifest = _read_json_if_exists(run_root / "04_background_repair" / "background_repair_manifest.json")
+    text_manifest = _read_json_if_exists(run_root / "02_ocr_protect" / "text_protect_manifest.json")
+    width = int(ingest_manifest["base_image"].get("width") or 960)
+    height = int(ingest_manifest["base_image"].get("height") or 540)
+    source_image = Path(ingest_manifest["base_image"]["run_path"])
+    base = load_rgba_image(source_image, width, height)
+
+    asset_by_id = {asset.get("asset_id"): asset for asset in style_manifest.get("styled_assets", [])}
+    placed_assets = []
+    for index, placement in enumerate(placements):
+        if not isinstance(placement, dict):
+            continue
+        asset_id = placement.get("asset_id")
+        asset = asset_by_id.get(asset_id)
+        if not asset:
+            continue
+        bbox = _normalize_bbox(placement.get("bbox"), (width, height))
+        placed_assets.append(
+            {
+                "asset_id": asset_id,
+                "bbox": bbox,
+                "generated_asset_path": asset.get("generated_asset_path"),
+                "mode": "manual_recompose",
+                "z_index": int(placement.get("z_index", index)),
+            }
+        )
+    placed_assets.sort(key=lambda item: item["z_index"])
+
+    background_repairs = [
+        {
+            "asset_id": repair["repair_id"],
+            "bbox": repair["bbox"],
+            "generated_asset_path": repair.get("repair_asset_path"),
+            "mode": "background_repair",
+            "source": repair.get("source"),
+            "placeholder_visual": repair.get("placeholder_visual"),
+            "applied_to_final": not bool(repair.get("placeholder_visual")),
+        }
+        for repair in background_manifest.get("repairs", [])
+    ]
+    repair_assets = [repair for repair in background_repairs if repair.get("applied_to_final")]
+    repaired_base = paste_assets(base, repair_assets)
+    recomposed = paste_assets(repaired_base, placed_assets)
+    final = restore_regions(recomposed, base, text_manifest.get("text_regions", []))
+
+    compose_dir = run_root / "06_compose"
+    final_path = compose_dir / "final_custom.png"
+    preview_path = compose_dir / "composition_custom_preview.png"
+    manifest_path = compose_dir / "compose_custom_manifest.json"
+    save_png(final, final_path)
+    write_composition_preview(
+        base_image=source_image,
+        width=width,
+        height=height,
+        placed_assets=placed_assets,
+        destination=preview_path,
+    )
+    write_json(
+        manifest_path,
+        {
+            "schema_version": "1.0",
+            "final_image": str(final_path),
+            "composition_source": "manual_recompose",
+            "background_repairs": background_repairs,
+            "placed_assets": placed_assets,
+            "protected_text_regions": text_manifest.get("text_regions", []),
+            "debug_artifacts": {
+                "composition_preview": str(preview_path),
+            },
+        },
+    )
+    return {
+        "run_id": run_id,
+        "final_image_path": str(final_path),
+        "final_image_url": _artifact_url(root, final_path),
+        "composition_preview_path": str(preview_path),
+        "composition_preview_url": _artifact_url(root, preview_path),
+        "placed_assets": placed_assets,
+    }
+
+
+def _normalize_bbox(value: Any, image_size: tuple[int, int]) -> list[int]:
+    if not isinstance(value, list) or len(value) != 4:
+        raise ValueError("Placement bbox must contain four numbers.")
+    width, height = image_size
+    x1, y1, x2, y2 = [int(round(float(item))) for item in value]
+    box_width = max(1, x2 - x1)
+    box_height = max(1, y2 - y1)
+    x1 = max(0, min(width - box_width, x1))
+    y1 = max(0, min(height - box_height, y1))
+    return [x1, y1, x1 + box_width, y1 + box_height]
 
 
 def _save_artifact(output_root: Path, payload: dict[str, Any]) -> dict[str, str]:

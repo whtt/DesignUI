@@ -119,15 +119,16 @@ Creates background repair plans for areas exposed by cutouts.
 
 Current behavior:
 
-- Writes placeholder background repair manifests.
-- Writes visible inpainting placeholder patch PNG files.
-- Writes a raster background repair preview labeled `INPAINT TODO`.
-- Compose can place repair placeholders before style assets.
+- Skips background repair when `output.preserve_layout = true`.
+- Uses lightweight local background repair when `algorithms.background_repair = lightweight_background_repair` and layout preservation is disabled.
+- Writes real repair patch PNG files created from surrounding color statistics and blur.
+- Falls back to placeholder repair patches if the lightweight repair adapter fails.
+- Writes a raster background repair preview labeled `LIGHT REPAIR` for lightweight repairs or `INPAINT TODO` for placeholders.
 
 Future upgrades:
 
-- Real inpainting.
-- Context-aware background reconstruction.
+- Prompt-guided large-model inpainting.
+- Context-aware background reconstruction with generated texture, shadows, and depth cues.
 - Shadow and texture continuation.
 
 ### 05 Style
@@ -156,12 +157,14 @@ Places generated elements back into the base image.
 
 Current behavior:
 
-- Records placeholder background repair patches but does not paste them into `final.png`.
+- Applies real lightweight background repair patches before style assets.
+- Records placeholder background repair patches but does not paste placeholders into `final.png`.
 - Alpha-composites styled PNG assets onto a raster base.
 - Restores protected text regions from the source image.
 - Writes `final.png`.
 - Writes a composition preview.
 - Skips placeholder background repair overlays in `final.png`; they remain visible only in debug previews and manifests.
+- When layout preservation is disabled, the local UI exposes a manual composition editor for dragging styled assets, changing front/back order, and writing `final_custom.png`.
 
 Future upgrades:
 

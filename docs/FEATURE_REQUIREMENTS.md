@@ -62,6 +62,8 @@ Early versions must make unfinished model integrations visually obvious:
 - Generate preview images for every major stage.
 - Support simple alpha compositing.
 - Support background repair placeholders.
+- Support lightweight background repair when selected elements move away from their original positions.
+- Skip background repair when the user preserves the original layout.
 - Support source-image restoration for protected text regions.
 - Support visible inpainting placeholders before real background repair is available.
 - Future: real inpainting.
@@ -71,6 +73,7 @@ Early versions must make unfinished model integrations visually obvious:
 ## Style Replacement
 
 - Replace selected elements with generated assets.
+- Allow manual placement and front/back ordering of generated assets when layout preservation is disabled.
 - Support parameterized UI redraw for controls such as buttons, cards, forms, and tables.
 - Support asset-library replacement for icons.
 - Support image-generation-based replacement for avatars, illustrations, and decorative elements.

@@ -111,10 +111,12 @@
 - Completed: added `02_ocr_protect`, which writes placeholder text-region manifests and `text_protect_preview.png`.
 - Completed: text protection regions are labeled `OCR LOCK TODO` and use `placeholder_visual = ocr_lock_tint`.
 - Completed: `06_compose` restores protected text regions from the source image after placeholder style assets are pasted.
-- Completed: added `04_background_repair`, which writes placeholder repair manifests, patch PNG files, and `background_repair_preview.png`.
-- Completed: background repair regions are labeled `INPAINT TODO` and use `placeholder_visual = inpaint_patch_marker`.
+- Completed: added `04_background_repair`, which writes repair manifests, patch PNG files, and `background_repair_preview.png`.
+- Completed: background repair skips work when `output.preserve_layout = true`.
+- Completed: optional `LightweightBackgroundRepair` creates real local repair patch PNGs when layout preservation is disabled.
+- Completed: lightweight background repair regions are labeled `LIGHT REPAIR`; placeholder fallback regions are labeled `INPAINT TODO`.
 - Completed: UI now displays text protection and background repair previews as independent debug cards.
-- Completed: `06_compose/final.png` skips placeholder background repair overlays so visible inpainting markers do not leak into final output.
+- Completed: `06_compose/final.png` applies real lightweight background repairs and skips placeholder background repair overlays so visible inpainting markers do not leak into final output.
 - Still not connected: real OCR text content regression and real inpainting models.
 
 ### SAM2 tiny segmentation
@@ -233,8 +235,11 @@
 - 已接入：`04_cutout` 会生成 cutout JSON 和透明 PNG。
 - 已接入：矩形 mask 下的 alpha cutout。
 - 已接入：透明 PNG 元素输出。
-- 已接入占位：背景修复 manifest、预览图和 placeholder patch。
-- 未接入：真实背景 inpainting。
+- 已接入：背景修复下拉框，可选择轻量背景修复、占位修复或后续大模型修复占位。
+- 已接入：保持原布局时自动跳过背景修复。
+- 当前可选真实执行：`LightweightBackgroundRepair`，不保持原布局时基于周围颜色统计和模糊生成本地背景补丁。
+- 已接入占位：轻量修复失败或选择占位修复时会生成 placeholder patch。
+- 未接入：prompt-guided 大模型背景 inpainting。
 - 未接入：阴影分离。
 - 未接入：边缘羽化。
 
@@ -254,9 +259,10 @@
 - 已接入：`06_compose` 当前会输出 raster `final.png`。
 - 已接入：合成意图预览。
 - 已接入：根据 bbox 放回 styled asset，支持占位素材和轻量风格迁移素材。
-- 已接入：最终图会跳过 placeholder background repair overlay，避免把圈选/修复占位框贴进最终结果。
+- 已接入：最终图会应用真实轻量背景修复，并跳过 placeholder background repair overlay，避免把圈选/修复占位框贴进最终结果。
+- 已接入：不保持原布局时，UI 右侧提供合成意图编辑器，可拖动素材、调整前后顺序并生成 `final_custom.png`。
 - 已接入：透明通道混合。
-- 未接入：真实生成资产图层合成。
+- 初步接入：手动图层顺序合成。
 - 未接入：阴影、高光、边框重建。
 - 未接入：像素网格对齐。
 - 未接入：全局色彩统一。
@@ -289,6 +295,7 @@
 - “检测算法”下拉框中的 `轻量检测器` 已有实际本地区域提议行为；YOLO/Grounded/VLM 检测选项仍未接入。
 - “分割算法”下拉框中的 `SAM2` 已有实际分割行为；其他分割选项仍未接入。
 - “OCR”下拉框中的 `RapidOCR` 已有实际 OCR 行为；其他 OCR 选项仍未接入。
+- “背景修复”在保持原布局时会自动跳过；取消保持原布局后，`轻量背景修复` 会生成本地修复补丁，但大模型修复仍未接入。
 - “风格替换”下拉框中的 `轻量风格迁移` 已有实际本地风格处理行为；其他风格选项仍未接入。
 - “自审”下拉框现在只有契约检查真实运行。
 - “最终结果”目前会执行基础 raster 合成，但还不具备真实生成资产的光影、边缘和全局一致性修复。
@@ -297,7 +304,7 @@
 ## 下一批建议优先完成
 
 1. 扩展手动 correction UI：polygon/lasso/brush mask。
-2. 将背景修复占位升级为真实 inpainting adapter。
+2. 将轻量背景修复升级为 prompt-guided 大模型 inpainting adapter。
 3. 增加 OCR 文本内容回归检查。
 4. 增加 run 详情页、before/after 对比和按 stage 续跑。
 5. 接入语义检测/开放词汇检测模型。
