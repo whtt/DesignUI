@@ -396,6 +396,7 @@ When `output.preserve_layout = true`, background repair is skipped and `repairs`
   "schema_version": "1.0",
   "final_image": "06_compose/final.png",
   "debug_artifacts": {
+    "background_canvas": "06_compose/background_canvas.png",
     "composition_preview": "06_compose/composition_preview.png"
   },
   "composition_source": "placeholder_compositor",
@@ -428,7 +429,7 @@ When `output.preserve_layout = true`, background repair is skipped and `repairs`
 }
 ```
 
-Real lightweight background repair patches are pasted before styled assets. Placeholder background repair patches are visible debug artifacts only. `06_compose/final.png` skips repairs with `applied_to_final = false` so colored inpainting placeholders and selection-like boxes do not appear in the final output.
+Real lightweight background repair patches are pasted before styled assets and saved as `06_compose/background_canvas.png` for manual composition. Placeholder background repair patches are visible debug artifacts only. `06_compose/final.png` skips repairs with `applied_to_final = false` so colored inpainting placeholders and selection-like boxes do not appear in the final output.
 
 Manual composition edits from the local UI are written to `06_compose/compose_custom_manifest.json` and `06_compose/final_custom.png`:
 

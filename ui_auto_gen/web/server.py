@@ -61,6 +61,10 @@ class UiServer:
                 if self.path == "/api/runs":
                     self._send_json({"runs": _list_runs(output_root)}, HTTPStatus.OK)
                     return
+                if self.path.startswith("/api/runs/"):
+                    run_id = unquote(self.path.removeprefix("/api/runs/").split("?", 1)[0])
+                    self._send_json(_run_details(output_root, run_id, ensure_canvas=True), HTTPStatus.OK)
+                    return
                 self._send_json({"error": "Not found"}, HTTPStatus.NOT_FOUND)
 
             def do_POST(self) -> None:
@@ -114,6 +118,7 @@ class UiServer:
                         "final_image_path": str(final_image),
                         "final_image_url": _artifact_url(output_root, final_image),
                         "base_image_url": _run_base_image_url(output_root, context.run_root),
+                        "background_canvas_url": _run_background_canvas_url(output_root, context.run_root),
                         "preserve_layout": bool(context.config.get("output", {}).get("preserve_layout", True)),
                         "debug_images": _collect_debug_images(output_root, results),
                         "cutout_assets": _collect_cutout_assets(output_root, context.run_root),
@@ -436,6 +441,64 @@ def _run_base_image_url(output_root: Path, run_root: Path) -> str | None:
     return None
 
 
+def _run_background_canvas_url(output_root: Path, run_root: Path, create_missing: bool = True) -> str | None:
+    canvas_path = _ensure_background_canvas(output_root, run_root) if create_missing else _existing_background_canvas(run_root)
+    if canvas_path and canvas_path.exists() and _is_relative_to(canvas_path.resolve(), output_root.resolve()):
+        return _artifact_url(output_root, canvas_path)
+    return None
+
+
+def _existing_background_canvas(run_root: Path) -> Path | None:
+    compose_manifest = _read_json_if_exists(run_root / "06_compose" / "compose_manifest.json")
+    raw_manifest_canvas = str(compose_manifest.get("debug_artifacts", {}).get("background_canvas") or "")
+    if raw_manifest_canvas:
+        manifest_canvas = Path(raw_manifest_canvas)
+        if manifest_canvas.exists() and manifest_canvas.is_file():
+            return manifest_canvas
+
+    canvas_path = run_root / "06_compose" / "background_canvas.png"
+    if canvas_path.exists() and canvas_path.is_file():
+        return canvas_path
+    return None
+
+
+def _ensure_background_canvas(output_root: Path, run_root: Path) -> Path | None:
+    existing = _existing_background_canvas(run_root)
+    if existing:
+        return existing
+
+    canvas_path = run_root / "06_compose" / "background_canvas.png"
+
+    try:
+        ingest_manifest = read_json(run_root / "00_ingest" / "ingest_manifest.json")
+    except Exception:
+        return None
+
+    width = int(ingest_manifest["base_image"].get("width") or 960)
+    height = int(ingest_manifest["base_image"].get("height") or 540)
+    source_image = Path(ingest_manifest["base_image"]["run_path"])
+    if not source_image.exists():
+        return None
+
+    background_manifest = _read_json_if_exists(run_root / "04_background_repair" / "background_repair_manifest.json")
+    background_repairs = [
+        {
+            "asset_id": repair["repair_id"],
+            "bbox": repair["bbox"],
+            "generated_asset_path": repair.get("repair_asset_path"),
+            "mode": "background_repair",
+            "source": repair.get("source"),
+            "placeholder_visual": repair.get("placeholder_visual"),
+            "applied_to_final": not _is_placeholder_repair(repair),
+        }
+        for repair in background_manifest.get("repairs", [])
+    ]
+    base = load_rgba_image(source_image, width, height)
+    repaired_base = paste_assets(base, [repair for repair in background_repairs if repair.get("applied_to_final")])
+    save_png(repaired_base, canvas_path)
+    return canvas_path
+
+
 def _collect_cutout_assets(output_root: Path, run_root: Path) -> list[dict[str, Any]]:
     cutout_manifest_path = run_root / "04_cutout" / "cutout_manifest.json"
     if not cutout_manifest_path.exists():
@@ -512,6 +575,44 @@ def _run_preserve_layout(run_root: Path) -> bool:
     return bool(config.get("output", {}).get("preserve_layout", True))
 
 
+def _run_details(output_root: Path, run_id: str, ensure_canvas: bool = False) -> dict[str, Any]:
+    if not run_id or "/" in run_id or "\\" in run_id:
+        raise ValueError("Invalid run id.")
+    root = output_root.resolve()
+    run_root = (root / run_id).resolve()
+    if not _is_relative_to(run_root, root) or not run_root.exists() or not run_root.is_dir():
+        raise ValueError("Run cache does not exist.")
+
+    summary_path = run_root / "08_export" / "run_summary.json"
+    manifest_path = run_root / "manifest.json"
+    summary = _read_json_if_exists(summary_path)
+    manifest = _read_json_if_exists(manifest_path)
+    raw_final_image = str(summary.get("final_image") or "")
+    final_image = Path(raw_final_image) if raw_final_image else None
+    final_image_url = (
+        _artifact_url(root, final_image)
+        if final_image and final_image.exists() and _is_relative_to(final_image.resolve(), root)
+        else None
+    )
+    return {
+        "run_id": summary.get("run_id") or manifest.get("run_id") or run_root.name,
+        "project_name": summary.get("project_name") or manifest.get("project_name"),
+        "created_at": manifest.get("created_at"),
+        "completed_at": manifest.get("completed_at"),
+        "status": "failed" if manifest.get("failed_at") else ("completed" if summary else "partial"),
+        "summary_path": str(summary_path) if summary_path.exists() else None,
+        "summary_url": _artifact_url(root, summary_path) if summary_path.exists() else None,
+        "final_image_path": str(final_image) if final_image and final_image.exists() else None,
+        "final_image_url": final_image_url,
+        "base_image_url": _run_base_image_url(root, run_root),
+        "background_canvas_url": _run_background_canvas_url(root, run_root, create_missing=ensure_canvas),
+        "preserve_layout": _run_preserve_layout(run_root),
+        "cutout_assets": _collect_cutout_assets(root, run_root),
+        "styled_assets": _collect_styled_assets(root, run_root),
+        "mtime": run_root.stat().st_mtime,
+    }
+
+
 def _list_runs(output_root: Path) -> list[dict[str, Any]]:
     root = output_root.resolve()
     if not root.exists():
@@ -521,35 +622,7 @@ def _list_runs(output_root: Path) -> list[dict[str, Any]]:
     run_roots.sort(key=lambda path: path.stat().st_mtime, reverse=True)
     runs = []
     for run_root in run_roots[:RUN_HISTORY_LIMIT]:
-        summary_path = run_root / "08_export" / "run_summary.json"
-        manifest_path = run_root / "manifest.json"
-        summary = _read_json_if_exists(summary_path)
-        manifest = _read_json_if_exists(manifest_path)
-        raw_final_image = str(summary.get("final_image") or "")
-        final_image = Path(raw_final_image) if raw_final_image else None
-        final_image_url = (
-            _artifact_url(root, final_image)
-            if final_image and final_image.exists() and _is_relative_to(final_image.resolve(), root)
-            else None
-        )
-        runs.append(
-            {
-                "run_id": summary.get("run_id") or manifest.get("run_id") or run_root.name,
-                "project_name": summary.get("project_name") or manifest.get("project_name"),
-                "created_at": manifest.get("created_at"),
-                "completed_at": manifest.get("completed_at"),
-                "status": "failed" if manifest.get("failed_at") else ("completed" if summary else "partial"),
-                "summary_path": str(summary_path) if summary_path.exists() else None,
-                "summary_url": _artifact_url(root, summary_path) if summary_path.exists() else None,
-                "final_image_path": str(final_image) if final_image and final_image.exists() else None,
-                "final_image_url": final_image_url,
-                "base_image_url": _run_base_image_url(root, run_root),
-                "preserve_layout": _run_preserve_layout(run_root),
-                "cutout_assets": _collect_cutout_assets(root, run_root),
-                "styled_assets": _collect_styled_assets(root, run_root),
-                "mtime": run_root.stat().st_mtime,
-            }
-        )
+        runs.append(_run_details(root, run_root.name, ensure_canvas=False))
 
     for run in runs:
         run.pop("mtime", None)
@@ -608,6 +681,7 @@ def _recompose_run(output_root: Path, payload: dict[str, Any]) -> dict[str, Any]
     height = int(ingest_manifest["base_image"].get("height") or 540)
     source_image = Path(ingest_manifest["base_image"]["run_path"])
     base = load_rgba_image(source_image, width, height)
+    background_canvas_path = _ensure_background_canvas(root, run_root) or source_image
 
     asset_by_id = {asset.get("asset_id"): asset for asset in style_manifest.get("styled_assets", [])}
     placed_assets = []
@@ -638,7 +712,7 @@ def _recompose_run(output_root: Path, payload: dict[str, Any]) -> dict[str, Any]
             "mode": "background_repair",
             "source": repair.get("source"),
             "placeholder_visual": repair.get("placeholder_visual"),
-            "applied_to_final": not bool(repair.get("placeholder_visual")),
+            "applied_to_final": not _is_placeholder_repair(repair),
         }
         for repair in background_manifest.get("repairs", [])
     ]
@@ -653,7 +727,7 @@ def _recompose_run(output_root: Path, payload: dict[str, Any]) -> dict[str, Any]
     manifest_path = compose_dir / "compose_custom_manifest.json"
     save_png(final, final_path)
     write_composition_preview(
-        base_image=source_image,
+        base_image=background_canvas_path,
         width=width,
         height=height,
         placed_assets=placed_assets,
@@ -679,6 +753,7 @@ def _recompose_run(output_root: Path, payload: dict[str, Any]) -> dict[str, Any]
         "final_image_url": _artifact_url(root, final_path),
         "composition_preview_path": str(preview_path),
         "composition_preview_url": _artifact_url(root, preview_path),
+        "background_canvas_url": _artifact_url(root, background_canvas_path),
         "placed_assets": placed_assets,
     }
 
@@ -693,6 +768,10 @@ def _normalize_bbox(value: Any, image_size: tuple[int, int]) -> list[int]:
     x1 = max(0, min(width - box_width, x1))
     y1 = max(0, min(height - box_height, y1))
     return [x1, y1, x1 + box_width, y1 + box_height]
+
+
+def _is_placeholder_repair(repair: dict[str, Any]) -> bool:
+    return repair.get("source") == "placeholder_background_repair" or bool(repair.get("placeholder_visual"))
 
 
 def _save_artifact(output_root: Path, payload: dict[str, Any]) -> dict[str, str]:

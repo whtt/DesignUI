@@ -45,8 +45,10 @@ class ComposeStage(PipelineStage):
         ]
         base = load_rgba_image(source_image, width, height)
         final_image = paths.artifact("final.png")
+        background_canvas = paths.artifact("background_canvas.png")
         final_background_repairs = [repair for repair in background_repairs if repair.get("applied_to_final")]
         repaired_base = paste_assets(base, final_background_repairs)
+        save_png(repaired_base, background_canvas)
         styled_image = paste_assets(repaired_base, placed_assets)
         protected_text_regions = text_manifest.get("text_regions", [])
         save_png(restore_regions(styled_image, base, protected_text_regions), final_image)
@@ -63,6 +65,7 @@ class ComposeStage(PipelineStage):
             "schema_version": "1.0",
             "final_image": str(final_image),
             "debug_artifacts": {
+                "background_canvas": str(background_canvas),
                 "composition_preview": str(preview_path),
             },
             "composition_source": "placeholder_compositor",
@@ -86,6 +89,7 @@ class ComposeStage(PipelineStage):
             status="completed",
             artifacts={
                 "manifest": str(manifest_path),
+                "background_canvas": str(background_canvas),
                 "final_image": str(final_image),
                 "composition_preview": str(preview_path),
             },

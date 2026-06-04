@@ -545,7 +545,9 @@ function renderRunHistory(runs) {
   });
 }
 
-function restoreRunPreview(run) {
+async function restoreRunPreview(run) {
+  const runDetails = await fetchRunDetails(run);
+  run = runDetails || run;
   latestRun = {
     run_id: run.run_id,
     final_image_url: run.final_image_url,
@@ -561,6 +563,19 @@ function restoreRunPreview(run) {
   resetDebugImages();
   renderAssetPanel(run.cutout_assets || [], run.styled_assets || run.generated_assets || []);
   renderCompositionEditor(run);
+}
+
+async function fetchRunDetails(run) {
+  if (!run?.run_id || run.background_canvas_url) return run;
+  try {
+    const response = await fetch(`/api/runs/${encodeURIComponent(run.run_id)}`);
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "读取历史详情失败");
+    return data;
+  } catch (error) {
+    statusTitle.textContent = error.message;
+    return run;
+  }
 }
 
 async function deleteRunCache(runId) {
@@ -624,7 +639,8 @@ function renderCompositionEditor(run) {
   compositionPlacements = [];
   compositionOverlay.innerHTML = "";
   compositionLayerList.innerHTML = "";
-  if (!run || run.preserve_layout !== false || !run.base_image_url) {
+  const canvasUrl = run?.background_canvas_url || run?.base_image_url;
+  if (!run || run.preserve_layout !== false || !canvasUrl) {
     compositionEditor.hidden = true;
     return;
   }
@@ -637,7 +653,7 @@ function renderCompositionEditor(run) {
   }
 
   compositionEditor.hidden = false;
-  compositionBaseImage.src = withCacheBust(run.base_image_url);
+  compositionBaseImage.src = withCacheBust(canvasUrl);
   compositionPlacements = usableAssets.map((asset, index) => ({
     asset_id: asset.asset_id,
     element_id: asset.element_id || asset.asset_id,
@@ -785,10 +801,17 @@ function renderCompositionLayerList() {
 }
 
 function moveCompositionLayer(assetId, delta) {
-  const placement = compositionPlacements.find((item) => item.asset_id === assetId);
-  if (!placement) return;
-  placement.z_index = clamp(placement.z_index + delta, 0, compositionPlacements.length - 1);
   normalizeCompositionOrder();
+  const ordered = [...compositionPlacements].sort((a, b) => a.z_index - b.z_index);
+  const currentIndex = ordered.findIndex((item) => item.asset_id === assetId);
+  if (currentIndex < 0) return;
+  const nextIndex = clamp(currentIndex + delta, 0, ordered.length - 1);
+  if (nextIndex === currentIndex) return;
+  [ordered[currentIndex], ordered[nextIndex]] = [ordered[nextIndex], ordered[currentIndex]];
+  ordered.forEach((placement, index) => {
+    placement.z_index = index;
+  });
+  compositionPlacements = ordered;
   renderCompositionOverlay();
 }
 
