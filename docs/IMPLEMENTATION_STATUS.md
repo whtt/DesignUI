@@ -26,6 +26,10 @@
 - 已完成：运行后展示抠图预览。
 - 已完成：运行后展示合成意图预览。
 - 已完成：点击 stage 后展示 notes 和 artifact links。
+- 已完成：左侧底部显示 run 历史缓存，可从历史记录恢复查看最终图和单个素材。
+- 已完成：提供缓存清除入口，支持清除单条 run 缓存和清除全部历史缓存。
+- 已完成：右侧次级结果区默认收纳，运行或查看历史后再展示调试图、模型说明和单素材。
+- 已完成：展示单个生成素材，抠图素材和风格素材分组展示，并可单独打开或保存。
 
 ### 后端服务
 
@@ -40,8 +44,14 @@
 - 已完成：调用 `PipelineRunner`。
 - 已完成：返回 run id、最终图路径、摘要路径、stage 状态。
 - 已完成：返回 debug image URLs。
+- 已完成：返回单个 cutout asset URLs 和 styled asset URLs。
 - 已完成：返回每个 stage 的 artifact URLs。
 - 已完成：通过 `/artifacts/...` 访问运行产物。
+- 已完成：`GET /api/runs` 返回历史 run 列表。
+- 已完成：`DELETE /api/runs` 清空 run 缓存。
+- 已完成：`DELETE /api/runs/{run_id}` 清除单条 run 缓存。
+- 已完成：`POST /api/save-artifact` 将运行产物复制保存到 `workspace/saved_outputs/`。
+- 已完成：通过 `/saved/...` 访问已保存产物。
 
 ### Pipeline 工程链路
 
@@ -266,6 +276,8 @@
 
 - 已接入：最终图片路径。
 - 已接入：run summary JSON。
+- 已接入：run summary 记录单个 `cutout_assets`、`styled_assets`，并保留兼容字段 `generated_assets`。
+- 已接入：抠图素材、风格素材和最终图可从 UI 保存到 `workspace/saved_outputs/`。
 - 未接入：PSD。
 - 未接入：layered PNG。
 - 未接入：Figma。
@@ -285,7 +297,7 @@
 ## 下一批建议优先完成
 
 1. 扩展手动 correction UI：polygon/lasso/brush mask。
-2. 接入语义检测/开放词汇检测模型，或更高质量 OCR 文本回归检查。
-3. 增加运行历史列表和 run 详情页。
-4. 将背景修复占位升级为真实 inpainting adapter。
-5. 增加 OCR 文本内容回归检查。
+2. 将背景修复占位升级为真实 inpainting adapter。
+3. 增加 OCR 文本内容回归检查。
+4. 增加 run 详情页、before/after 对比和按 stage 续跑。
+5. 接入语义检测/开放词汇检测模型。

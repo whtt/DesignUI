@@ -5,6 +5,7 @@ import base64
 import html
 import json
 import mimetypes
+import shutil
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -18,6 +19,8 @@ from ui_auto_gen.utils import utc_now_iso, write_json
 
 STATIC_ROOT = Path(__file__).resolve().parent / "static"
 REPO_ROOT = repo_root()
+SAVED_ROOT = REPO_ROOT / "workspace" / "saved_outputs"
+RUN_HISTORY_LIMIT = 60
 
 
 class UiServer:
@@ -50,11 +53,32 @@ class UiServer:
                 if self.path.startswith("/artifacts/"):
                     self._serve_artifact(output_root)
                     return
+                if self.path.startswith("/saved/"):
+                    self._serve_saved()
+                    return
+                if self.path == "/api/runs":
+                    self._send_json({"runs": _list_runs(output_root)}, HTTPStatus.OK)
+                    return
                 self._send_json({"error": "Not found"}, HTTPStatus.NOT_FOUND)
 
             def do_POST(self) -> None:
                 if self.path == "/api/run":
                     self._handle_run(output_root)
+                    return
+                if self.path == "/api/save-artifact":
+                    self._handle_save_artifact(output_root)
+                    return
+                self._send_json({"error": "Not found"}, HTTPStatus.NOT_FOUND)
+
+            def do_DELETE(self) -> None:
+                if self.path == "/api/runs":
+                    deleted = _clear_runs(output_root)
+                    self._send_json({"deleted": deleted, "runs": []}, HTTPStatus.OK)
+                    return
+                if self.path.startswith("/api/runs/"):
+                    run_id = unquote(self.path.removeprefix("/api/runs/").split("?", 1)[0])
+                    deleted = _delete_run(output_root, run_id)
+                    self._send_json({"deleted": deleted, "runs": _list_runs(output_root)}, HTTPStatus.OK)
                     return
                 self._send_json({"error": "Not found"}, HTTPStatus.NOT_FOUND)
 
@@ -78,6 +102,8 @@ class UiServer:
                         "final_image_path": str(final_image),
                         "final_image_url": _artifact_url(output_root, final_image),
                         "debug_images": _collect_debug_images(output_root, results),
+                        "cutout_assets": _collect_cutout_assets(output_root, context.run_root),
+                        "styled_assets": _collect_styled_assets(output_root, context.run_root),
                         "stages": [
                             {
                                 "name": result.stage,
@@ -90,6 +116,14 @@ class UiServer:
                         ],
                     }
                     self._send_json(response, HTTPStatus.OK)
+                except Exception as exc:
+                    self._send_json({"error": str(exc)}, HTTPStatus.BAD_REQUEST)
+
+            def _handle_save_artifact(self, output_root: Path) -> None:
+                try:
+                    payload = self._read_json_body()
+                    saved = _save_artifact(output_root, payload)
+                    self._send_json(saved, HTTPStatus.OK)
                 except Exception as exc:
                     self._send_json({"error": str(exc)}, HTTPStatus.BAD_REQUEST)
 
@@ -110,6 +144,15 @@ class UiServer:
                 path = (output_root / relative).resolve()
                 if not _is_relative_to(path, output_root) or not path.exists() or not path.is_file():
                     self._send_json({"error": "Artifact not found"}, HTTPStatus.NOT_FOUND)
+                    return
+                self._send_file(path)
+
+            def _serve_saved(self) -> None:
+                relative = unquote(self.path.removeprefix("/saved/").split("?", 1)[0])
+                saved_root = SAVED_ROOT.resolve()
+                path = (saved_root / relative).resolve()
+                if not _is_relative_to(path, saved_root) or not path.exists() or not path.is_file():
+                    self._send_json({"error": "Saved file not found"}, HTTPStatus.NOT_FOUND)
                     return
                 self._send_file(path)
 
@@ -348,6 +391,202 @@ def _collect_debug_images(output_root: Path, results: list[Any]) -> dict[str, st
                 if path.exists() and path.is_file() and _is_relative_to(path.resolve(), output_root.resolve()):
                     debug_images[key] = _artifact_url(output_root, path)
     return debug_images
+
+
+def _collect_cutout_assets(output_root: Path, run_root: Path) -> list[dict[str, Any]]:
+    cutout_manifest_path = run_root / "04_cutout" / "cutout_manifest.json"
+    if not cutout_manifest_path.exists():
+        return []
+
+    try:
+        cutout_manifest = json.loads(cutout_manifest_path.read_text(encoding="utf-8"))
+        segmentation_manifest = _read_json_if_exists(run_root / "03_segment" / "segmentation_manifest.json")
+        detection_manifest = _read_json_if_exists(run_root / "02_detect" / "detection_manifest.json")
+    except json.JSONDecodeError:
+        return []
+
+    mask_to_detection = {
+        mask.get("mask_id"): mask.get("detection_id")
+        for mask in segmentation_manifest.get("masks", [])
+    }
+    detection_to_element = {
+        detection.get("detection_id"): detection.get("element_id")
+        for detection in detection_manifest.get("detections", [])
+    }
+    assets = []
+    for cutout in cutout_manifest.get("cutouts", []):
+        asset_path = Path(str(cutout.get("alpha_asset_path") or ""))
+        if not asset_path.exists() or not asset_path.is_file():
+            continue
+        resolved = asset_path.resolve()
+        if not _is_relative_to(resolved, output_root.resolve()):
+            continue
+        assets.append(
+            {
+                "asset_id": cutout.get("cutout_id"),
+                "element_id": detection_to_element.get(mask_to_detection.get(cutout.get("mask_id"))),
+                "source": cutout.get("source") or "cutout",
+                "path": str(resolved),
+                "url": _artifact_url(output_root, resolved),
+            }
+        )
+    return assets
+
+
+def _collect_styled_assets(output_root: Path, run_root: Path) -> list[dict[str, Any]]:
+    style_manifest_path = run_root / "05_style" / "style_manifest.json"
+    if not style_manifest_path.exists():
+        return []
+
+    try:
+        style_manifest = json.loads(style_manifest_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return []
+
+    assets = []
+    for asset in style_manifest.get("styled_assets", []):
+        asset_path = Path(str(asset.get("generated_asset_path") or ""))
+        if not asset_path.exists() or not asset_path.is_file():
+            continue
+        resolved = asset_path.resolve()
+        if not _is_relative_to(resolved, output_root.resolve()):
+            continue
+        assets.append(
+            {
+                "asset_id": asset.get("asset_id"),
+                "element_id": asset.get("element_id"),
+                "source": asset.get("source"),
+                "path": str(resolved),
+                "url": _artifact_url(output_root, resolved),
+            }
+        )
+    return assets
+
+
+def _list_runs(output_root: Path) -> list[dict[str, Any]]:
+    root = output_root.resolve()
+    if not root.exists():
+        return []
+
+    run_roots = [path for path in root.iterdir() if path.is_dir()]
+    run_roots.sort(key=lambda path: path.stat().st_mtime, reverse=True)
+    runs = []
+    for run_root in run_roots[:RUN_HISTORY_LIMIT]:
+        summary_path = run_root / "08_export" / "run_summary.json"
+        manifest_path = run_root / "manifest.json"
+        summary = _read_json_if_exists(summary_path)
+        manifest = _read_json_if_exists(manifest_path)
+        raw_final_image = str(summary.get("final_image") or "")
+        final_image = Path(raw_final_image) if raw_final_image else None
+        final_image_url = (
+            _artifact_url(root, final_image)
+            if final_image and final_image.exists() and _is_relative_to(final_image.resolve(), root)
+            else None
+        )
+        runs.append(
+            {
+                "run_id": summary.get("run_id") or manifest.get("run_id") or run_root.name,
+                "project_name": summary.get("project_name") or manifest.get("project_name"),
+                "created_at": manifest.get("created_at"),
+                "completed_at": manifest.get("completed_at"),
+                "status": "failed" if manifest.get("failed_at") else ("completed" if summary else "partial"),
+                "summary_path": str(summary_path) if summary_path.exists() else None,
+                "summary_url": _artifact_url(root, summary_path) if summary_path.exists() else None,
+                "final_image_path": str(final_image) if final_image and final_image.exists() else None,
+                "final_image_url": final_image_url,
+                "cutout_assets": _collect_cutout_assets(root, run_root),
+                "styled_assets": _collect_styled_assets(root, run_root),
+                "mtime": run_root.stat().st_mtime,
+            }
+        )
+
+    for run in runs:
+        run.pop("mtime", None)
+    return runs
+
+
+def _clear_runs(output_root: Path) -> list[str]:
+    root = output_root.resolve()
+    if not root.exists():
+        return []
+    deleted = []
+    for child in root.iterdir():
+        resolved = child.resolve()
+        if not _is_relative_to(resolved, root) or resolved == root:
+            continue
+        if child.is_dir():
+            shutil.rmtree(child)
+        else:
+            child.unlink()
+        deleted.append(child.name)
+    return deleted
+
+
+def _delete_run(output_root: Path, run_id: str) -> str:
+    root = output_root.resolve()
+    if not run_id or "/" in run_id or "\\" in run_id:
+        raise ValueError("Invalid run id.")
+    target = (root / run_id).resolve()
+    if not _is_relative_to(target, root) or target == root or not target.exists():
+        raise ValueError("Run cache does not exist.")
+    if target.is_dir():
+        shutil.rmtree(target)
+    else:
+        target.unlink()
+    return run_id
+
+
+def _save_artifact(output_root: Path, payload: dict[str, Any]) -> dict[str, str]:
+    source = _artifact_path_from_payload(output_root, payload)
+    if not source.exists() or not source.is_file():
+        raise ValueError("Artifact file does not exist.")
+
+    label = _safe_filename(str(payload.get("label") or source.stem))
+    extension = source.suffix.lower() or ".png"
+    safe_timestamp = utc_now_iso().replace(":", "").replace("-", "").split(".")[0]
+    destination = SAVED_ROOT / f"{safe_timestamp}_{label}{extension}"
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(source, destination)
+    return {
+        "saved_path": str(destination),
+        "saved_url": _saved_url(destination),
+    }
+
+
+def _artifact_path_from_payload(output_root: Path, payload: dict[str, Any]) -> Path:
+    root = output_root.resolve()
+    raw_url = str(payload.get("url") or "")
+    raw_path = str(payload.get("path") or "")
+    if raw_url.startswith("/artifacts/"):
+        relative = unquote(raw_url.removeprefix("/artifacts/").split("?", 1)[0])
+        source = (root / relative).resolve()
+    elif raw_path:
+        source = Path(raw_path).resolve()
+    else:
+        raise ValueError("Save request requires an artifact URL or path.")
+
+    if not _is_relative_to(source, root):
+        raise ValueError("Only run artifacts can be saved.")
+    return source
+
+
+def _safe_filename(value: str) -> str:
+    safe = "".join(char.lower() if char.isalnum() else "_" for char in value).strip("_")
+    return safe or "artifact"
+
+
+def _saved_url(path: Path) -> str:
+    relative = path.resolve().relative_to(SAVED_ROOT.resolve()).as_posix()
+    return f"/saved/{relative}"
+
+
+def _read_json_if_exists(path: Path) -> dict[str, Any]:
+    if not path.exists() or not path.is_file():
+        return {}
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return {}
 
 
 def _is_relative_to(path: Path, parent: Path) -> bool:

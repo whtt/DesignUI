@@ -150,6 +150,20 @@
             <label><input id="keepText" type="checkbox" checked /> 保留文字</label>
           </div>
         </form>
+
+        <section class="cache-panel" aria-label="缓存历史">
+          <header>
+            <div>
+              <p class="eyebrow">Cache</p>
+              <h2>历史缓存</h2>
+            </div>
+            <div class="cache-actions">
+              <button id="refreshHistoryButton" class="small-button" type="button">刷新历史</button>
+              <button id="clearRunsButton" class="small-button danger-button" type="button">清除缓存</button>
+            </div>
+          </header>
+          <div id="runHistory" class="run-history">暂无历史记录</div>
+        </section>
       </section>
 
       <section class="result-panel">
@@ -167,7 +181,7 @@
           </div>
         </div>
 
-        <section class="placeholder-guide">
+        <section id="placeholderGuide" class="placeholder-guide" hidden>
           <header>
             <span>待接入模型说明</span>
             <small>当前彩色标记是工程占位，用来说明后续模型会做什么。</small>
@@ -192,7 +206,7 @@
           </div>
         </section>
 
-        <section class="debug-gallery">
+        <section id="debugGallery" class="debug-gallery" hidden>
           <article class="debug-card">
             <header>
               <span>检测框预览</span>
@@ -257,8 +271,26 @@
           </article>
         </section>
 
+        <section id="assetPanel" class="asset-gallery" hidden>
+          <header>
+            <span>单个生成素材</span>
+            <small>抠图和风格素材可单独打开或保存</small>
+          </header>
+          <div class="asset-group">
+            <h3>抠图素材</h3>
+            <div id="cutoutAssetList" class="asset-list">运行后显示抠图素材</div>
+          </div>
+          <div class="asset-group">
+            <h3>风格素材</h3>
+            <div id="styleAssetList" class="asset-list">运行后显示风格素材</div>
+          </div>
+        </section>
+
         <figure class="final-output">
-          <figcaption>最终结果</figcaption>
+          <figcaption>
+            <span>最终结果</span>
+            <button id="saveFinalButton" class="small-button" type="button" hidden>保存最终图</button>
+          </figcaption>
           <div id="resultEmpty" class="empty-output">运行后会显示最终图像</div>
           <img id="resultImage" alt="最终结果" hidden />
         </figure>

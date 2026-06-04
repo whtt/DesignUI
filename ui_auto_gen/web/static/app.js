@@ -4,6 +4,15 @@ const stageList = document.querySelector("#stageList");
 const resultImage = document.querySelector("#resultImage");
 const resultEmpty = document.querySelector("#resultEmpty");
 const summaryLink = document.querySelector("#summaryLink");
+const saveFinalButton = document.querySelector("#saveFinalButton");
+const refreshHistoryButton = document.querySelector("#refreshHistoryButton");
+const clearRunsButton = document.querySelector("#clearRunsButton");
+const runHistory = document.querySelector("#runHistory");
+const placeholderGuide = document.querySelector("#placeholderGuide");
+const debugGallery = document.querySelector("#debugGallery");
+const assetPanel = document.querySelector("#assetPanel");
+const cutoutAssetList = document.querySelector("#cutoutAssetList");
+const styleAssetList = document.querySelector("#styleAssetList");
 const baseImageInput = document.querySelector("#baseImage");
 const referenceImageInput = document.querySelector("#referenceImage");
 const basePreview = document.querySelector("#basePreview");
@@ -127,13 +136,26 @@ selectionSurface.addEventListener("pointercancel", () => {
 });
 
 clearManualRegionsButton.addEventListener("click", clearManualRegions);
+refreshHistoryButton.addEventListener("click", loadRunHistory);
+clearRunsButton.addEventListener("click", clearRunCache);
+saveFinalButton.addEventListener("click", () => {
+  if (!latestRun?.final_image_url) return;
+  saveArtifact({
+    url: latestRun.final_image_url,
+    label: `${latestRun.run_id}_final`,
+    statusElement: saveFinalButton,
+  });
+});
 
 runButton.addEventListener("click", async () => {
   runButton.disabled = true;
   statusTitle.textContent = "运行中";
   summaryLink.hidden = true;
+  saveFinalButton.hidden = true;
   resultImage.hidden = true;
   resultEmpty.hidden = false;
+  renderAssetPanel([], []);
+  setResultSectionsVisible(false);
   latestRun = null;
   resetDebugImages();
   setStages("pending");
@@ -151,12 +173,16 @@ runButton.addEventListener("click", async () => {
     latestRun = data;
     statusTitle.textContent = `完成：${data.run_id}`;
     setStages("complete", data.stages);
+    setResultSectionsVisible(true);
     renderDebugImages(data.debug_images || {});
+    renderAssetPanel(data.cutout_assets || [], data.styled_assets || data.generated_assets || []);
     resultImage.src = withCacheBust(data.final_image_url);
     resultImage.hidden = false;
     resultEmpty.hidden = true;
     summaryLink.href = data.summary_url;
     summaryLink.hidden = false;
+    saveFinalButton.hidden = false;
+    await loadRunHistory();
   } catch (error) {
     statusTitle.textContent = error.message;
     setStages("");
@@ -164,6 +190,8 @@ runButton.addEventListener("click", async () => {
     runButton.disabled = false;
   }
 });
+
+loadRunHistory();
 
 async function collectPayload() {
   const baseMode = document.querySelector('input[name="baseMode"]:checked').value;
@@ -336,6 +364,228 @@ function renderDebugImages(debugImages) {
     target.empty.hidden = true;
     target.link.href = url;
     target.link.hidden = false;
+  }
+}
+
+function setResultSectionsVisible(visible) {
+  placeholderGuide.hidden = !visible;
+  debugGallery.hidden = !visible;
+  assetPanel.hidden = !visible;
+}
+
+function renderAssetPanel(cutoutAssets, styledAssets) {
+  renderAssetList(cutoutAssetList, cutoutAssets, "暂无抠图素材");
+  renderAssetList(styleAssetList, styledAssets, "暂无风格素材");
+  assetPanel.hidden = !cutoutAssets.length && !styledAssets.length;
+}
+
+function renderAssetList(container, assets, emptyText) {
+  container.innerHTML = "";
+  if (!assets.length) {
+    container.textContent = emptyText;
+    return;
+  }
+
+  assets.forEach((asset) => {
+    const card = document.createElement("article");
+    card.className = "asset-card";
+
+    const image = document.createElement("img");
+    image.src = withCacheBust(asset.url);
+    image.alt = asset.element_id || asset.asset_id || "生成素材";
+
+    const title = document.createElement("b");
+    title.textContent = asset.element_id || asset.asset_id || "生成素材";
+
+    const meta = document.createElement("span");
+    meta.textContent = asset.source || "generated";
+
+    const actions = document.createElement("div");
+    actions.className = "asset-actions";
+
+    const openLink = document.createElement("a");
+    openLink.className = "ghost-link";
+    openLink.href = asset.url;
+    openLink.target = "_blank";
+    openLink.textContent = "打开";
+
+    const saveButton = document.createElement("button");
+    saveButton.className = "small-button";
+    saveButton.type = "button";
+    saveButton.textContent = "保存";
+    saveButton.addEventListener("click", () => {
+      saveArtifact({
+        url: asset.url,
+        label: asset.element_id || asset.asset_id || "asset",
+        statusElement: saveButton,
+      });
+    });
+
+    actions.appendChild(openLink);
+    actions.appendChild(saveButton);
+    card.appendChild(image);
+    card.appendChild(title);
+    card.appendChild(meta);
+    card.appendChild(actions);
+    container.appendChild(card);
+  });
+}
+
+async function saveArtifact({ url, label, statusElement }) {
+  const previousText = statusElement.textContent;
+  statusElement.disabled = true;
+  statusElement.textContent = "保存中";
+  try {
+    const response = await fetch("/api/save-artifact", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url, label }),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "保存失败");
+    statusElement.textContent = "已保存";
+    statusElement.title = data.saved_path;
+  } catch (error) {
+    statusElement.textContent = error.message;
+  } finally {
+    window.setTimeout(() => {
+      statusElement.disabled = false;
+      statusElement.textContent = previousText;
+    }, 1400);
+  }
+}
+
+async function loadRunHistory() {
+  try {
+    const response = await fetch("/api/runs");
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "读取历史失败");
+    renderRunHistory(data.runs || []);
+  } catch (error) {
+    runHistory.textContent = error.message;
+  }
+}
+
+function renderRunHistory(runs) {
+  runHistory.innerHTML = "";
+  if (!runs.length) {
+    runHistory.textContent = "暂无历史记录";
+    return;
+  }
+
+  runs.forEach((run) => {
+    const item = document.createElement("div");
+    item.className = "run-history-item";
+
+    const text = document.createElement("div");
+    const title = document.createElement("b");
+    title.textContent = run.run_id;
+    const meta = document.createElement("span");
+    const assetCount = (run.cutout_assets || []).length + (run.styled_assets || run.generated_assets || []).length;
+    meta.textContent = `${run.status} · ${assetCount} 个素材`;
+    text.appendChild(title);
+    text.appendChild(meta);
+
+    const actions = document.createElement("div");
+    actions.className = "history-actions";
+
+    const viewButton = document.createElement("button");
+    viewButton.className = "small-button";
+    viewButton.type = "button";
+    viewButton.textContent = "查看";
+    viewButton.disabled = !run.final_image_url;
+    viewButton.addEventListener("click", () => restoreRunPreview(run));
+
+    const summary = document.createElement("a");
+    summary.className = "ghost-link";
+    summary.href = run.summary_url || "#";
+    summary.target = "_blank";
+    summary.textContent = "摘要";
+    if (!run.summary_url) summary.hidden = true;
+
+    const deleteButton = document.createElement("button");
+    deleteButton.className = "small-button danger-button";
+    deleteButton.type = "button";
+    deleteButton.textContent = "清除";
+    deleteButton.addEventListener("click", () => deleteRunCache(run.run_id));
+
+    actions.appendChild(viewButton);
+    actions.appendChild(summary);
+    actions.appendChild(deleteButton);
+    item.appendChild(text);
+    item.appendChild(actions);
+    runHistory.appendChild(item);
+  });
+}
+
+function restoreRunPreview(run) {
+  latestRun = {
+    run_id: run.run_id,
+    final_image_url: run.final_image_url,
+  };
+  statusTitle.textContent = `查看历史：${run.run_id}`;
+  resultImage.src = withCacheBust(run.final_image_url);
+  resultImage.hidden = false;
+  resultEmpty.hidden = true;
+  summaryLink.href = run.summary_url || "#";
+  summaryLink.hidden = !run.summary_url;
+  saveFinalButton.hidden = !run.final_image_url;
+  setResultSectionsVisible(true);
+  resetDebugImages();
+  renderAssetPanel(run.cutout_assets || [], run.styled_assets || run.generated_assets || []);
+}
+
+async function deleteRunCache(runId) {
+  if (!confirm(`确定清除 ${runId} 这条缓存吗？已保存到 workspace/saved_outputs 的图片不会被删除。`)) {
+    return;
+  }
+  try {
+    const response = await fetch(`/api/runs/${encodeURIComponent(runId)}`, { method: "DELETE" });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "清除失败");
+    if (latestRun?.run_id === runId) {
+      latestRun = null;
+      statusTitle.textContent = `已清除：${runId}`;
+      summaryLink.hidden = true;
+      saveFinalButton.hidden = true;
+      resultImage.hidden = true;
+      resultEmpty.hidden = false;
+      setResultSectionsVisible(false);
+      renderAssetPanel([], []);
+      resetDebugImages();
+    }
+    renderRunHistory(data.runs || []);
+  } catch (error) {
+    statusTitle.textContent = error.message;
+  }
+}
+
+async function clearRunCache() {
+  if (!confirm("确定清除全部历史缓存吗？已保存到 workspace/saved_outputs 的图片不会被删除。")) {
+    return;
+  }
+  clearRunsButton.disabled = true;
+  clearRunsButton.textContent = "清除中";
+  try {
+    const response = await fetch("/api/runs", { method: "DELETE" });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "清除失败");
+    latestRun = null;
+    statusTitle.textContent = `已清除 ${data.deleted.length} 个 run`;
+    summaryLink.hidden = true;
+    saveFinalButton.hidden = true;
+    resultImage.hidden = true;
+    resultEmpty.hidden = false;
+    setResultSectionsVisible(false);
+    renderAssetPanel([], []);
+    resetDebugImages();
+    setStages("");
+    renderRunHistory([]);
+  } catch (error) {
+    statusTitle.textContent = error.message;
+  } finally {
+    clearRunsButton.disabled = false;
+    clearRunsButton.textContent = "清除缓存";
   }
 }
 

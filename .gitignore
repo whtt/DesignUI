@@ -9,3 +9,4 @@ runs/
 workspace/
 private/
 models/
+docs/CHAT_HISTORY*.md

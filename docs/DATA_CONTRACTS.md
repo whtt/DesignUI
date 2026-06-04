@@ -444,3 +444,49 @@ Placeholder background repair patches are visible debug artifacts only. `06_comp
   ]
 }
 ```
+
+## Export Run Summary
+
+```json
+{
+  "schema_version": "1.0",
+  "run_id": "sample_dashboard_restyle_20260604",
+  "project_name": "sample_dashboard_restyle",
+  "final_image": "06_compose/final.png",
+  "cutout_assets": [
+    {
+      "asset_id": "cutout_mask_det_primary_buttons_001",
+      "generated_asset_path": "04_cutout/cutouts/cutout_mask_det_primary_buttons_001.png",
+      "source": "raster_cutout"
+    }
+  ],
+  "styled_assets": [
+    {
+      "asset_id": "styled_cutout_mask_det_primary_buttons_001",
+      "element_id": "primary_buttons",
+      "generated_asset_path": "05_style/styled_assets/styled_cutout_mask_det_primary_buttons_001.png",
+      "source": "lightweight_style_transfer_adapter"
+    }
+  ],
+  "generated_assets": [
+    {
+      "asset_id": "styled_cutout_mask_det_primary_buttons_001",
+      "element_id": "primary_buttons",
+      "generated_asset_path": "05_style/styled_assets/styled_cutout_mask_det_primary_buttons_001.png",
+      "source": "lightweight_style_transfer_adapter"
+    }
+  ],
+  "review": {
+    "pass": true,
+    "score": 0.75,
+    "issues": []
+  },
+  "stage_manifests": {
+    "00_ingest": "00_ingest/ingest_manifest.json",
+    "05_style": "05_style/style_manifest.json",
+    "06_compose": "06_compose/compose_manifest.json"
+  }
+}
+```
+
+`cutout_assets` lists individual transparent cutouts from `04_cutout`; `styled_assets` lists the individual images created by `05_style`. `generated_assets` is kept as a compatibility alias for styled assets. The local UI can open each item directly or copy it into `workspace/saved_outputs/` through the save-artifact API before cache cleanup.

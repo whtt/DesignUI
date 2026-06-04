@@ -92,6 +92,9 @@ Early versions must make unfinished model integrations visually obvious:
 - Show per-run summary.
 - Show per-stage manifests.
 - Show per-stage visual artifacts.
+- Clear generated run-cache artifacts from `runs/`.
+- Clear a single run cache entry.
+- Save selected final images, cutout assets, or styled assets outside the run cache.
 - Allow rerun from a specific stage.
 - Allow compare before/after.
 - Allow export of debug bundles.

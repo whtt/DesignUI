@@ -189,6 +189,14 @@ Future upgrades:
 
 Writes a final run summary.
 
+Current behavior:
+
+- Writes `run_summary.json`.
+- Records the final image path.
+- Records individual cutout assets from `04_cutout`.
+- Records individual styled assets from `05_style`.
+- The local UI can save final images, cutout assets, or styled assets into `workspace/saved_outputs/`.
+
 Future upgrades:
 
 - PSD/layered PNG.
