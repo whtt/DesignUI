@@ -190,7 +190,14 @@
           </div>
         </div>
 
-        <section id="compositionEditor" class="composition-editor" hidden>
+        <nav id="workspaceMenu" class="workspace-menu" hidden aria-label="结果工作区">
+          <button class="workspace-menu-button active" type="button" data-workspace-target="result">结果</button>
+          <button class="workspace-menu-button" type="button" data-workspace-target="assets">资源</button>
+          <button class="workspace-menu-button" type="button" data-workspace-target="debug">调试</button>
+          <button class="workspace-menu-button" type="button" data-workspace-target="backstage">后台</button>
+        </nav>
+
+        <section id="compositionEditor" class="composition-editor workspace-page" data-workspace-page="result" hidden>
           <header>
             <span>合成意图编辑</span>
             <button id="applyCompositionButton" class="small-button" type="button">应用合成</button>
@@ -202,7 +209,7 @@
           <div id="compositionLayerList" class="composition-layer-list">不保持原布局时可调整素材位置和前后顺序</div>
         </section>
 
-        <figure class="final-output">
+        <figure class="final-output workspace-page" data-workspace-page="result">
           <figcaption>
             <span>最终结果</span>
             <button id="saveFinalButton" class="small-button" type="button" hidden>保存最终图</button>
@@ -211,7 +218,7 @@
           <img id="resultImage" alt="最终结果" hidden />
         </figure>
 
-        <section id="runDetailPanel" class="run-detail-panel" hidden>
+        <section id="runDetailPanel" class="run-detail-panel workspace-page" data-workspace-page="backstage" hidden>
           <header>
             <div>
               <p class="eyebrow">Run Detail</p>
@@ -223,7 +230,7 @@
           <div id="detailStageGrid" class="detail-stage-grid"></div>
         </section>
 
-        <section id="placeholderGuide" class="placeholder-guide" hidden>
+        <section id="placeholderGuide" class="placeholder-guide workspace-page" data-workspace-page="debug" hidden>
           <header>
             <span>待接入模型说明</span>
             <small>当前彩色标记是工程占位，用来说明后续模型会做什么。</small>
@@ -248,7 +255,7 @@
           </div>
         </section>
 
-        <section id="debugGallery" class="debug-gallery" hidden>
+        <section id="debugGallery" class="debug-gallery workspace-page" data-workspace-page="debug" hidden>
           <article class="debug-card">
             <header>
               <span>检测框预览</span>
@@ -313,11 +320,12 @@
           </article>
         </section>
 
-        <section id="assetPanel" class="asset-gallery" hidden>
+        <section id="assetPanel" class="asset-gallery workspace-page" data-workspace-page="assets" hidden>
           <header>
             <span>单个生成素材</span>
-            <small>抠图和风格素材可单独打开或保存</small>
+            <small>先选择单个素材，再打开或保存</small>
           </header>
+          <div id="selectedAssetDetail" class="selected-asset-detail">选择一个素材后查看和保存</div>
           <div class="asset-group">
             <h3>抠图素材</h3>
             <div id="cutoutAssetList" class="asset-list">运行后显示抠图素材</div>

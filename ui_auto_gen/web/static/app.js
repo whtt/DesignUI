@@ -19,11 +19,15 @@ const compositionBaseImage = document.querySelector("#compositionBaseImage");
 const compositionOverlay = document.querySelector("#compositionOverlay");
 const compositionLayerList = document.querySelector("#compositionLayerList");
 const applyCompositionButton = document.querySelector("#applyCompositionButton");
+const workspaceMenu = document.querySelector("#workspaceMenu");
+const workspaceButtons = document.querySelectorAll("[data-workspace-target]");
+const workspacePages = document.querySelectorAll("[data-workspace-page]");
 const runDetailPanel = document.querySelector("#runDetailPanel");
 const detailRunTitle = document.querySelector("#detailRunTitle");
 const detailCompareGrid = document.querySelector("#detailCompareGrid");
 const detailReviewList = document.querySelector("#detailReviewList");
 const detailStageGrid = document.querySelector("#detailStageGrid");
+const selectedAssetDetail = document.querySelector("#selectedAssetDetail");
 const baseImageInput = document.querySelector("#baseImage");
 const referenceImageInput = document.querySelector("#referenceImage");
 const basePreview = document.querySelector("#basePreview");
@@ -39,6 +43,7 @@ let manualRegions = [];
 let activeSelection = null;
 let compositionPlacements = [];
 let activeCompositionDrag = null;
+let activeWorkspacePage = "result";
 
 const debugTargets = {
   detection_preview: {
@@ -158,6 +163,9 @@ refreshHistoryButton.addEventListener("click", loadRunHistory);
 clearRunsButton.addEventListener("click", clearRunCache);
 preserveLayoutInput.addEventListener("change", updateBackgroundRepairAvailability);
 applyCompositionButton.addEventListener("click", applyManualComposition);
+workspaceButtons.forEach((button) => {
+  button.addEventListener("click", () => setWorkspacePage(button.dataset.workspaceTarget));
+});
 saveFinalButton.addEventListener("click", () => {
   if (!latestRun?.final_image_url) return;
   saveArtifact({
@@ -176,6 +184,7 @@ runButton.addEventListener("click", async () => {
   resultEmpty.hidden = false;
   renderAssetPanel([], []);
   renderCompositionEditor(null);
+  setWorkspacePage("result");
   setResultSectionsVisible(false);
   latestRun = null;
   resetDebugImages();
@@ -400,17 +409,46 @@ function renderDebugImages(debugImages) {
 }
 
 function setResultSectionsVisible(visible) {
-  placeholderGuide.hidden = !visible;
-  debugGallery.hidden = !visible;
-  assetPanel.hidden = !visible;
-  runDetailPanel.hidden = !visible;
-  if (!visible) compositionEditor.hidden = true;
+  workspaceMenu.hidden = !visible;
+  if (!visible) {
+    workspacePages.forEach((page) => {
+      page.hidden = true;
+    });
+    compositionEditor.hidden = true;
+    return;
+  }
+  applyWorkspacePage();
+}
+
+function setWorkspacePage(page) {
+  activeWorkspacePage = page || "result";
+  applyWorkspacePage();
+}
+
+function applyWorkspacePage() {
+  workspaceButtons.forEach((button) => {
+    button.classList.toggle("active", button.dataset.workspaceTarget === activeWorkspacePage);
+  });
+  workspacePages.forEach((page) => {
+    const isActive = page.dataset.workspacePage === activeWorkspacePage;
+    if (page === compositionEditor) {
+      page.hidden = !isActive || !compositionPlacements.length;
+    } else if (page === assetPanel) {
+      page.hidden = !isActive;
+    } else if (page === runDetailPanel) {
+      page.hidden = !isActive || !latestRun;
+    } else {
+      page.hidden = !isActive;
+    }
+  });
+  renderCompositionOverlay();
 }
 
 function renderAssetPanel(cutoutAssets, styledAssets) {
   renderAssetList(cutoutAssetList, cutoutAssets, "暂无抠图素材");
   renderAssetList(styleAssetList, styledAssets, "暂无风格素材");
-  assetPanel.hidden = !cutoutAssets.length && !styledAssets.length;
+  renderSelectedAsset(null);
+  applyWorkspacePage();
 }
 
 function renderAssetList(container, assets, emptyText) {
@@ -437,32 +475,65 @@ function renderAssetList(container, assets, emptyText) {
     const actions = document.createElement("div");
     actions.className = "asset-actions";
 
-    const openLink = document.createElement("a");
-    openLink.className = "ghost-link";
-    openLink.href = asset.url;
-    openLink.target = "_blank";
-    openLink.textContent = "打开";
+    const selectButton = document.createElement("button");
+    selectButton.className = "small-button";
+    selectButton.type = "button";
+    selectButton.textContent = "选择";
+    selectButton.addEventListener("click", () => renderSelectedAsset(asset));
 
-    const saveButton = document.createElement("button");
-    saveButton.className = "small-button";
-    saveButton.type = "button";
-    saveButton.textContent = "保存";
-    saveButton.addEventListener("click", () => {
-      saveArtifact({
-        url: asset.url,
-        label: asset.element_id || asset.asset_id || "asset",
-        statusElement: saveButton,
-      });
-    });
-
-    actions.appendChild(openLink);
-    actions.appendChild(saveButton);
+    actions.appendChild(selectButton);
     card.appendChild(image);
     card.appendChild(title);
     card.appendChild(meta);
     card.appendChild(actions);
     container.appendChild(card);
   });
+}
+
+function renderSelectedAsset(asset) {
+  selectedAssetDetail.innerHTML = "";
+  if (!asset) {
+    selectedAssetDetail.textContent = "选择一个素材后查看和保存";
+    return;
+  }
+
+  const preview = document.createElement("img");
+  preview.src = withCacheBust(asset.url);
+  preview.alt = asset.element_id || asset.asset_id || "素材";
+
+  const meta = document.createElement("div");
+  meta.className = "selected-asset-meta";
+  const title = document.createElement("b");
+  title.textContent = asset.element_id || asset.asset_id || "素材";
+  const source = document.createElement("span");
+  source.textContent = asset.source || "generated";
+  meta.appendChild(title);
+  meta.appendChild(source);
+
+  const actions = document.createElement("div");
+  actions.className = "selected-asset-actions";
+  const openLink = document.createElement("a");
+  openLink.className = "ghost-link";
+  openLink.href = asset.url;
+  openLink.target = "_blank";
+  openLink.textContent = "打开";
+  const saveButton = document.createElement("button");
+  saveButton.className = "small-button";
+  saveButton.type = "button";
+  saveButton.textContent = "保存";
+  saveButton.addEventListener("click", () => {
+    saveArtifact({
+      url: asset.url,
+      label: asset.element_id || asset.asset_id || "asset",
+      statusElement: saveButton,
+    });
+  });
+  actions.appendChild(openLink);
+  actions.appendChild(saveButton);
+
+  selectedAssetDetail.appendChild(preview);
+  selectedAssetDetail.appendChild(meta);
+  selectedAssetDetail.appendChild(actions);
 }
 
 async function saveArtifact({ url, label, statusElement }) {
@@ -651,15 +722,15 @@ function renderRunDetails(run) {
   detailReviewList.innerHTML = "";
   detailStageGrid.innerHTML = "";
   if (!run) {
-    runDetailPanel.hidden = true;
+    applyWorkspacePage();
     return;
   }
 
-  runDetailPanel.hidden = false;
   detailRunTitle.textContent = run.run_id || "阶段详情";
   renderDetailCompare(run);
   renderReviewDetails(run.review || {});
   renderStageDetails(run);
+  applyWorkspacePage();
 }
 
 function renderDetailCompare(run) {
@@ -824,6 +895,7 @@ function renderCompositionEditor(run) {
   const canvasUrl = run?.background_canvas_url || run?.base_image_url;
   if (!run || run.preserve_layout !== false || !canvasUrl) {
     compositionEditor.hidden = true;
+    applyWorkspacePage();
     return;
   }
 
@@ -831,10 +903,10 @@ function renderCompositionEditor(run) {
   const usableAssets = assets.filter((asset) => Array.isArray(asset.bbox) && asset.url);
   if (!usableAssets.length) {
     compositionEditor.hidden = true;
+    applyWorkspacePage();
     return;
   }
 
-  compositionEditor.hidden = false;
   compositionBaseImage.src = withCacheBust(canvasUrl);
   compositionPlacements = usableAssets.map((asset, index) => ({
     asset_id: asset.asset_id,
@@ -844,6 +916,7 @@ function renderCompositionEditor(run) {
     z_index: index,
   }));
   compositionBaseImage.addEventListener("load", renderCompositionOverlay, { once: true });
+  applyWorkspacePage();
   renderCompositionOverlay();
 }
 
