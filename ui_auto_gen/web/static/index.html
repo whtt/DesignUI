@@ -190,6 +190,27 @@
           </div>
         </div>
 
+        <section id="compositionEditor" class="composition-editor" hidden>
+          <header>
+            <span>合成意图编辑</span>
+            <button id="applyCompositionButton" class="small-button" type="button">应用合成</button>
+          </header>
+          <div id="compositionSurface" class="composition-surface">
+            <img id="compositionBaseImage" alt="合成底图" draggable="false" />
+            <div id="compositionOverlay" class="composition-overlay"></div>
+          </div>
+          <div id="compositionLayerList" class="composition-layer-list">不保持原布局时可调整素材位置和前后顺序</div>
+        </section>
+
+        <figure class="final-output">
+          <figcaption>
+            <span>最终结果</span>
+            <button id="saveFinalButton" class="small-button" type="button" hidden>保存最终图</button>
+          </figcaption>
+          <div id="resultEmpty" class="empty-output">运行后会显示最终图像</div>
+          <img id="resultImage" alt="最终结果" hidden />
+        </figure>
+
         <section id="placeholderGuide" class="placeholder-guide" hidden>
           <header>
             <span>待接入模型说明</span>
@@ -294,27 +315,6 @@
             <div id="styleAssetList" class="asset-list">运行后显示风格素材</div>
           </div>
         </section>
-
-        <section id="compositionEditor" class="composition-editor" hidden>
-          <header>
-            <span>合成意图编辑</span>
-            <button id="applyCompositionButton" class="small-button" type="button">应用合成</button>
-          </header>
-          <div id="compositionSurface" class="composition-surface">
-            <img id="compositionBaseImage" alt="合成底图" draggable="false" />
-            <div id="compositionOverlay" class="composition-overlay"></div>
-          </div>
-          <div id="compositionLayerList" class="composition-layer-list">不保持原布局时可调整素材位置和前后顺序</div>
-        </section>
-
-        <figure class="final-output">
-          <figcaption>
-            <span>最终结果</span>
-            <button id="saveFinalButton" class="small-button" type="button" hidden>保存最终图</button>
-          </figcaption>
-          <div id="resultEmpty" class="empty-output">运行后会显示最终图像</div>
-          <img id="resultImage" alt="最终结果" hidden />
-        </figure>
       </section>
     </main>
 
