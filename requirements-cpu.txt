@@ -2,6 +2,7 @@
 # Installs:
 # - RapidOCR text protection with ONNX Runtime CPU
 # - SAM2 segmentation with PyTorch CPU
+# - ONNX fast neural style transfer with ONNX Runtime CPU
 --index-url https://download.pytorch.org/whl/cpu
 --extra-index-url https://pypi.org/simple
 

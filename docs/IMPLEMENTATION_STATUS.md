@@ -105,6 +105,8 @@
 - 已完成：`05_style` 的 placeholder styled asset 会渲染 emoji / sticker 标记，明确表示这里未来会由风格迁移、参数化重绘或资产库替换生成真实素材。
 - 已完成：分割和风格阶段的 manifest 已新增 `placeholder_visual` 和 `future_adapter` 字段，记录当前占位表现和未来替换方向。
 - 已完成：UI 已新增“待接入模型说明”区域，解释实例分割、风格迁移、OCR 保护和背景修复目前的占位含义。
+- 已完成：可选 `OnnxFastNeuralStyleAdapter` 使用 ONNX Runtime 加载小型 Fast Neural Style Transfer 预训练权重，支持 `mosaic`、`candy`、`rain-princess`、`udnie`、`pointilism` 风格预设。
+- 已完成：Web UI 新增“风格预设”控件，并将选择写入 `algorithms.style_preset`。
 
 ### OCR and background repair placeholders
 

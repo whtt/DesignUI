@@ -231,7 +231,7 @@ Current behavior:
 - It preserves the cutout alpha channel and writes real styled PNG assets.
 - If the adapter fails, `StyleStage` falls back to `PlaceholderStyleAdapter`.
 
-This adapter does not require a neural checkpoint, GPU, or external API. It is intentionally small so the pipeline can exercise the style-generation contract before adding ONNX fast neural style transfer, ControlNet, IPAdapter, LoRA, or parameterized UI redraw.
+This adapter does not require a neural checkpoint, GPU, or external API. It is intentionally small so the pipeline can exercise the style-generation contract before adding stronger style adapters.
 
 ### Smoke Test
 
@@ -244,6 +244,59 @@ Successful runs should record:
 ```text
 actual_adapter = lightweight_style_transfer_adapter
 model.engine = pillow
+fallback = null
+```
+
+## ONNX Fast Neural Style Transfer
+
+DesignUI can use a small pretrained ONNX Fast Neural Style Transfer model when `algorithms.style = onnx_fast_neural_style`.
+
+Download one or more style presets:
+
+```bash
+python scripts/download_fast_style_models.py --style mosaic
+# or download all presets:
+python scripts/download_fast_style_models.py
+```
+
+Supported presets:
+
+- `mosaic`
+- `candy`
+- `rain-princess`
+- `udnie`
+- `pointilism`
+
+Configure a run with:
+
+```json
+"algorithms": {
+  "style": "onnx_fast_neural_style",
+  "style_preset": "mosaic"
+}
+```
+
+Runtime variables:
+
+```bash
+export DESIGNUI_STYLE_MODEL_DIR=models/style_transfer
+export DESIGNUI_STYLE_PRESET=mosaic
+export DESIGNUI_STYLE_DEVICE=cpu
+```
+
+The adapter runs on CPU by default because the model is small. Set `DESIGNUI_STYLE_DEVICE=cuda` only when ONNX Runtime CUDA dependencies are available.
+
+Smoke test:
+
+```bash
+python -B -m ui_auto_gen.cli run --config configs/sample_onnx_style_job.json --run-id onnx_style_mosaic_smoke --overwrite
+```
+
+Successful runs should record:
+
+```text
+actual_adapter = onnx_fast_neural_style_adapter
+model.style_preset = mosaic
 fallback = null
 ```
 

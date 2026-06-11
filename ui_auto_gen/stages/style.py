@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ui_auto_gen.adapters import LightweightStyleTransferAdapter, PlaceholderStyleAdapter
+from ui_auto_gen.adapters import LightweightStyleTransferAdapter, OnnxFastNeuralStyleAdapter, PlaceholderStyleAdapter
 from ui_auto_gen.raster import asset_contact_sheet, save_png
 from ui_auto_gen.schemas import PipelineContext, StageResult
 from ui_auto_gen.stages.base import PipelineStage
@@ -21,8 +21,10 @@ class StyleStage(PipelineStage):
         text_protect_manifest = _read_optional_manifest(context.run_root / "02_ocr_protect" / "text_protect_manifest.json")
 
         requested_algorithm = context.config.get("algorithms", {}).get("style", "placeholder_style_adapter")
+        style_preset = context.config.get("algorithms", {}).get("style_preset")
         adapter, styled_assets, fallback = self._run_adapter(
             requested_algorithm=requested_algorithm,
+            style_preset=style_preset,
             cutouts=cutout_manifest["cutouts"],
             plan_manifest=plan_manifest,
             detection_manifest=detection_manifest,
@@ -60,11 +62,50 @@ class StyleStage(PipelineStage):
     def _run_adapter(
         self,
         requested_algorithm: str,
+        style_preset: str | None,
         cutouts: list[dict],
         plan_manifest: dict,
         detection_manifest: dict,
         assets_dir: Path,
     ) -> tuple[object, list[dict], dict | None]:
+        if requested_algorithm in {"onnx_fast_neural_style", "fast_neural_style", "onnx_style_transfer"}:
+            try:
+                adapter = OnnxFastNeuralStyleAdapter(style_preset=style_preset)
+                assets = adapter.create_assets(
+                    cutouts=cutouts,
+                    plan_manifest=plan_manifest,
+                    detection_manifest=detection_manifest,
+                    assets_dir=assets_dir,
+                )
+                return adapter, assets, None
+            except Exception as exc:
+                fallback_adapter = LightweightStyleTransferAdapter()
+                try:
+                    assets = fallback_adapter.create_assets(
+                        cutouts=cutouts,
+                        plan_manifest=plan_manifest,
+                        detection_manifest=detection_manifest,
+                        assets_dir=assets_dir,
+                    )
+                    return fallback_adapter, assets, {
+                        "requested_adapter": "onnx_fast_neural_style_adapter",
+                        "fallback_adapter": fallback_adapter.adapter_name,
+                        "reason": str(exc),
+                    }
+                except Exception as fallback_exc:
+                    placeholder_adapter = PlaceholderStyleAdapter()
+                    assets = placeholder_adapter.create_assets(
+                        cutouts=cutouts,
+                        plan_manifest=plan_manifest,
+                        detection_manifest=detection_manifest,
+                        assets_dir=assets_dir,
+                    )
+                    return placeholder_adapter, assets, {
+                        "requested_adapter": "onnx_fast_neural_style_adapter",
+                        "fallback_adapter": placeholder_adapter.adapter_name,
+                        "reason": f"{exc}; lightweight fallback failed: {fallback_exc}",
+                    }
+
         if requested_algorithm in {"lightweight_style_transfer", "palette_transfer", "color_statistics_transfer"}:
             try:
                 adapter = LightweightStyleTransferAdapter()
@@ -108,10 +149,12 @@ def _read_optional_manifest(path: Path) -> dict:
 def _notes(adapter_name: str, asset_count: int, fallback: dict | None) -> list[str]:
     if fallback:
         return [
-            f"Requested lightweight style transfer but fell back to {adapter_name}.",
-            f"Created {asset_count} fallback placeholder styled asset records.",
+            f"Requested style transfer but fell back to {adapter_name}.",
+            f"Created {asset_count} fallback styled asset records.",
             f"Fallback reason: {fallback['reason']}",
         ]
+    if adapter_name == "onnx_fast_neural_style_adapter":
+        return [f"Created {asset_count} ONNX fast neural style-transfer assets."]
     if adapter_name == "lightweight_style_transfer_adapter":
         return [f"Created {asset_count} lightweight style-transfer assets."]
     return [f"Created {asset_count} placeholder styled asset records."]

@@ -254,6 +254,7 @@ async function collectPayload() {
       ocr: valueOf("#ocr"),
       backgroundRepair: valueOf("#backgroundRepair"),
       style: valueOf("#style"),
+      stylePreset: valueOf("#stylePreset"),
       review: valueOf("#review"),
     },
   };

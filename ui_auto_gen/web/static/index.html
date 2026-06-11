@@ -140,9 +140,20 @@
             <select id="style">
               <option value="placeholder_style_adapter">占位风格器</option>
               <option value="lightweight_style_transfer">轻量风格迁移</option>
-              <option value="controlnet_ipadapter">ControlNet + IPAdapter</option>
+              <option value="onnx_fast_neural_style">ONNX 小模型风格迁移</option>
               <option value="parameter_ui_renderer">参数化 UI 重绘</option>
               <option value="asset_library">资产库替换</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>风格预设</span>
+            <select id="stylePreset">
+              <option value="mosaic">Mosaic</option>
+              <option value="candy">Candy</option>
+              <option value="rain-princess">Rain Princess</option>
+              <option value="udnie">Udnie</option>
+              <option value="pointilism">Pointilism</option>
             </select>
           </label>
 

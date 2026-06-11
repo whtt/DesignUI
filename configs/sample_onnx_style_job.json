@@ -1,0 +1,42 @@
+{
+  "schema_version": "1.0",
+  "project_name": "sample_dashboard_restyle_onnx_style",
+  "base_image": "examples/base_placeholder.svg",
+  "target_elements": [
+    {
+      "id": "primary_button",
+      "name": "primary action button",
+      "type_hint": "button",
+      "action": "replace_style",
+      "style": "mosaic fast neural style",
+      "keep_text": true
+    },
+    {
+      "id": "stat_cards",
+      "name": "dashboard stat cards",
+      "type_hint": "card",
+      "action": "restyle",
+      "style": "mosaic fast neural style",
+      "keep_text": true
+    }
+  ],
+  "algorithms": {
+    "detector": "lightweight_detector",
+    "segmenter": "placeholder_segmenter",
+    "ocr": "placeholder_ocr",
+    "background_repair": "lightweight_background_repair",
+    "style": "onnx_fast_neural_style",
+    "style_preset": "mosaic",
+    "review": "contract_review"
+  },
+  "global_style": {
+    "description": "mosaic fast neural style",
+    "palette": ["#111827", "#2563EB", "#22C55E"],
+    "corner_radius": 10,
+    "shadow": "soft"
+  },
+  "output": {
+    "formats": ["image", "json"],
+    "preserve_layout": true
+  }
+}

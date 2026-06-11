@@ -1,7 +1,9 @@
 # Base portable runtime for placeholder adapters, lightweight detector,
-# lightweight style transfer, lightweight background repair, and review.
+# lightweight style transfer, ONNX fast neural style transfer,
+# lightweight background repair, and review.
 Pillow>=12.0.0
 
 # Established optional model-backed algorithms:
 # - RapidOCR text protection: install requirements-cpu.txt or requirements-gpu.txt
 # - SAM2 segmentation: install requirements-cpu.txt or requirements-gpu.txt
+# - ONNX fast neural style transfer: install requirements-cpu.txt or requirements-gpu.txt

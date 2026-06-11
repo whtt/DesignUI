@@ -5,6 +5,7 @@
 # Installs:
 # - RapidOCR text protection with ONNX Runtime GPU
 # - SAM2 segmentation with CUDA-enabled PyTorch
+# - ONNX fast neural style transfer with ONNX Runtime GPU
 --index-url https://download.pytorch.org/whl/cu121
 --extra-index-url https://pypi.org/simple
 

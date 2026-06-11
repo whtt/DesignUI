@@ -9,7 +9,12 @@ from ui_auto_gen.adapters.ocr import OcrProtectAdapter, PlaceholderOcrProtector,
 from ui_auto_gen.adapters.reviewer import ContractReviewer, ReviewAdapter
 from ui_auto_gen.adapters.sam2 import Sam2Segmenter
 from ui_auto_gen.adapters.segmenter import PlaceholderSegmenter, SegmenterAdapter
-from ui_auto_gen.adapters.style import LightweightStyleTransferAdapter, PlaceholderStyleAdapter, StyleAdapter
+from ui_auto_gen.adapters.style import (
+    LightweightStyleTransferAdapter,
+    OnnxFastNeuralStyleAdapter,
+    PlaceholderStyleAdapter,
+    StyleAdapter,
+)
 
 __all__ = [
     "BackgroundRepairAdapter",
@@ -21,6 +26,7 @@ __all__ = [
     "LightweightDetector",
     "OcrProtectAdapter",
     "OmniParserDetector",
+    "OnnxFastNeuralStyleAdapter",
     "PlaceholderBackgroundRepair",
     "PlaceholderDetector",
     "PlaceholderOcrProtector",

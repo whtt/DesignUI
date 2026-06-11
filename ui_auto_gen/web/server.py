@@ -255,6 +255,7 @@ def _create_job_config(payload: dict[str, Any]) -> Path:
             "ocr": algorithms.get("ocr", "placeholder_ocr"),
             "background_repair": algorithms.get("backgroundRepair", "lightweight_background_repair"),
             "style": algorithms.get("style", "placeholder_style_adapter"),
+            "style_preset": algorithms.get("stylePreset", "mosaic"),
             "review": algorithms.get("review", "contract_review"),
         },
         "global_style": {

@@ -366,7 +366,33 @@ When lightweight style transfer runs successfully, `actual_adapter` becomes `lig
 }
 ```
 
-When lightweight style transfer cannot run, `actual_adapter` becomes `placeholder_style_adapter` and `fallback` records `requested_adapter`, `fallback_adapter`, and `reason`.
+When ONNX fast neural style transfer runs successfully, `actual_adapter` becomes `onnx_fast_neural_style_adapter`, `model.style_preset` records the selected pretrained style, and styled assets preserve the original cutout alpha:
+
+```json
+{
+  "schema_version": "1.0",
+  "requested_algorithm": "onnx_fast_neural_style",
+  "actual_adapter": "onnx_fast_neural_style_adapter",
+  "model": {
+    "model_family": "fast_neural_style_transfer",
+    "engine": "onnxruntime",
+    "style_preset": "mosaic",
+    "model_path": "models/style_transfer/mosaic-9.onnx",
+    "device": "cpu"
+  },
+  "fallback": null,
+  "styled_assets": [
+    {
+      "asset_id": "styled_cutout_mask_det_primary_buttons_001",
+      "element_id": "primary_buttons",
+      "generated_asset_path": "05_style/styled_assets/styled_cutout_mask_det_primary_buttons_001.png",
+      "source": "onnx_fast_neural_style_adapter"
+    }
+  ]
+}
+```
+
+When neural style transfer cannot run, the stage records `fallback` with `requested_adapter`, `fallback_adapter`, and `reason`. ONNX style falls back to lightweight style transfer first, then placeholder style assets.
 
 ## Cutout Manifest
 
