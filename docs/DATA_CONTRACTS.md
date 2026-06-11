@@ -417,7 +417,7 @@ When lightweight style transfer cannot run, `actual_adapter` becomes `placeholde
       "repair_path": "04_background_repair/repairs/repair_cutout_mask_det_primary_buttons_001.json",
       "repair_asset_path": "04_background_repair/repairs/repair_cutout_mask_det_primary_buttons_001.png",
       "repair_mask_path": "04_background_repair/repairs/lama_inpaint_mask.png",
-      "repair_scope": "bbox",
+      "repair_scope": "cutout_alpha",
       "bbox": [64, 64, 256, 128],
       "source": "lama_background_inpaint",
       "placeholder_visual": null,
@@ -427,7 +427,7 @@ When lightweight style transfer cannot run, `actual_adapter` becomes `placeholde
 }
 ```
 
-When `output.preserve_layout = true`, background repair is skipped and `repairs` is empty. When LaMa repair fails, the stage records a fallback and tries lightweight OpenCV/Pillow repair before placeholder repair. For LaMa repair, `repair_mask_path` points to the combined inpaint mask used for the full-canvas IOPaint run; each generated repair PNG is cropped back to the element bbox and alpha-constrained by its repair mask.
+When `output.preserve_layout = true`, background repair is skipped and `repairs` is empty. When LaMa repair fails, the stage records a fallback and tries lightweight OpenCV/Pillow repair before placeholder repair. For LaMa repair, `repair_scope = cutout_alpha` means the inpaint mask was built from the extracted cutout PNG alpha, so completion is limited to the actual removed UI pixels instead of the full detection bbox. `repair_mask_path` points to the combined inpaint mask used for the full-canvas IOPaint run; each generated repair PNG is cropped back to the element bbox and alpha-constrained by its repair mask.
 
 ## Compose Manifest
 

@@ -339,6 +339,11 @@ def _use_bbox_mask(cutout: dict[str, Any], image_size: tuple[int, int], mask_mod
 
 def _repair_region(cutout: dict[str, Any], image_size: tuple[int, int], mask_mode: str) -> dict[str, Any]:
     x1, y1, x2, y2 = clamp_bbox(cutout.get("bbox") or [0, 0, image_size[0], image_size[1]], image_size)
+    if mask_mode in {"auto", "cutout", "cutout_alpha", "alpha"}:
+        cutout_mask = _cutout_alpha_mask(cutout, (x1, y1, x2, y2), image_size)
+        if cutout_mask is not None:
+            return {"scope": "cutout_alpha", "mask": _dilate_mask(cutout_mask)}
+
     use_bbox_mask = _use_bbox_mask(cutout, image_size, mask_mode)
     if use_bbox_mask or not cutout.get("mask_png_path"):
         mask = Image.new("L", image_size, 0)
@@ -348,6 +353,36 @@ def _repair_region(cutout: dict[str, Any], image_size: tuple[int, int], mask_mod
     mask_path = Path(cutout["mask_png_path"])
     mask = _mask_for_region(mask_path, (0, 0, image_size[0], image_size[1]), image_size, image_size)
     return {"scope": "segmentation_mask", "mask": _dilate_mask(mask)}
+
+
+def _cutout_alpha_mask(
+    cutout: dict[str, Any],
+    bbox: tuple[int, int, int, int],
+    image_size: tuple[int, int],
+) -> Image.Image | None:
+    alpha_path = cutout.get("alpha_asset_path")
+    if not alpha_path:
+        return None
+    path = Path(str(alpha_path))
+    if not path.exists():
+        return None
+
+    x1, y1, x2, y2 = bbox
+    width = x2 - x1
+    height = y2 - y1
+    if width <= 0 or height <= 0:
+        return None
+
+    with Image.open(path) as cutout_image:
+        alpha = cutout_image.convert("RGBA").getchannel("A")
+    if alpha.size != (width, height):
+        alpha = alpha.resize((width, height))
+    if not alpha.getbbox():
+        return None
+
+    mask = Image.new("L", image_size, 0)
+    mask.paste(alpha.point(lambda value: 255 if value > 8 else 0, mode="L"), (x1, y1))
+    return mask
 
 
 def _combined_repair_mask(regions: list[dict[str, Any]], image_size: tuple[int, int]) -> Image.Image:

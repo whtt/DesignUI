@@ -286,6 +286,8 @@ export DESIGNUI_INPAINT_DEVICE=cuda
 export DESIGNUI_BACKGROUND_REPAIR_MASK_MODE=auto
 ```
 
+In `auto` mode, LaMa repair first uses the extracted cutout alpha mask (`repair_scope = cutout_alpha`). This keeps image completion limited to the actual UI pixels that were removed. If no cutout alpha is available, it falls back to segmentation or bbox masks.
+
 Smoke test:
 
 ```bash

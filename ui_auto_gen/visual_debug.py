@@ -99,6 +99,8 @@ def write_background_repair_preview(
             "preview_label": (
                 f"LIGHT REPAIR {index + 1}"
                 if repair.get("source") == "lightweight_background_repair"
+                else f"LAMA REPAIR {index + 1}"
+                if repair.get("source") == "lama_background_inpaint"
                 else f"INPAINT TODO {index + 1}"
             ),
         }
