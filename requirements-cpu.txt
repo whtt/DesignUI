@@ -1,0 +1,14 @@
+# CPU dependency set for established optional algorithms.
+# Installs:
+# - RapidOCR text protection with ONNX Runtime CPU
+# - SAM2 tiny segmentation with PyTorch CPU
+--index-url https://download.pytorch.org/whl/cpu
+--extra-index-url https://pypi.org/simple
+
+-r requirements.txt
+numpy>=1.26.0
+rapidocr>=3.0.0
+onnxruntime>=1.18.0
+torch>=2.3.0
+torchvision>=0.18.0
+git+https://github.com/facebookresearch/sam2.git

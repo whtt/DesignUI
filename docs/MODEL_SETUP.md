@@ -63,22 +63,21 @@ $env:DESIGNUI_SAM2_DEVICE="auto"
 
 ### Install
 
-SAM2 is not included in `requirements.txt` because PyTorch install commands differ by machine.
-
-Recommended local CPU-oriented setup on this Windows machine:
+SAM2 dependencies are split by device because PyTorch wheels differ by CPU/CUDA target. For CPU:
 
 ```powershell
 py -3.10 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install --upgrade pip
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv\Scripts\python.exe -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+.\.venv\Scripts\python.exe -m pip install -r requirements-cpu.txt
 ```
 
-Install SAM2 from GitHub:
+For CUDA 12.1 GPU environments:
 
 ```powershell
-.\.venv\Scripts\python.exe -m pip install git+https://github.com/facebookresearch/sam2.git
+.\.venv\Scripts\python.exe -m pip install -r requirements-gpu.txt
 ```
+
+If the GPU machine needs a different CUDA wheel target, update the PyTorch index URL in `requirements-gpu.txt` before installing.
 
 If `git clone` times out, download the GitHub zip and install it locally:
 
@@ -138,10 +137,12 @@ Current behavior:
 
 ### Install
 
-RapidOCR is optional and is not included in `requirements.txt`.
+RapidOCR dependencies are included in the device-specific requirement files:
 
 ```powershell
-.\.venv\Scripts\python.exe -m pip install rapidocr onnxruntime
+.\.venv\Scripts\python.exe -m pip install -r requirements-cpu.txt
+# or:
+.\.venv\Scripts\python.exe -m pip install -r requirements-gpu.txt
 ```
 
 RapidOCR may download its ONNX model files on first use. In the current local deployment those files live inside `.venv`, which is ignored by Git.

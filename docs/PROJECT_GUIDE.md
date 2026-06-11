@@ -58,6 +58,14 @@ node --check ui_auto_gen\web\static\app.js
 git diff --check
 ```
 
+Optional algorithm dependencies:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements-cpu.txt
+# or, for CUDA 12.1 environments:
+.\.venv\Scripts\python.exe -m pip install -r requirements-gpu.txt
+```
+
 ## File Locator
 
 - `ui_auto_gen/pipeline.py`: stage orchestration.
@@ -87,3 +95,11 @@ After editing:
 - Run the smallest useful smoke test.
 - Check `actual_adapter` and `fallback` in manifests when validating model behavior.
 - Keep generated artifacts out of Git.
+
+## Development Process
+
+- Commit cohesive changes after validation; do not commit generated outputs from `runs/`, `workspace/`, `models/`, `external/`, `.venv/`, or `private/`.
+- Add new generated or local-only paths to `.gitignore` before running tools that create them.
+- Use short imperative commit subjects, for example `Add optional model requirements`.
+- Push only reviewed local commits to `origin`; use a pull request for shared review.
+- PR descriptions should state the behavior change, validation commands, related issue or doc links, and screenshots for UI changes.

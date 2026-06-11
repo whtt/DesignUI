@@ -1,0 +1,16 @@
+# GPU dependency set for established optional algorithms.
+# Default target: NVIDIA CUDA 12.1 PyTorch wheels. Change the index URL
+# to the CUDA build that matches the deployment machine if needed.
+# Installs:
+# - RapidOCR text protection with ONNX Runtime GPU
+# - SAM2 tiny segmentation with CUDA-enabled PyTorch
+--index-url https://download.pytorch.org/whl/cu121
+--extra-index-url https://pypi.org/simple
+
+-r requirements.txt
+numpy>=1.26.0
+rapidocr>=3.0.0
+onnxruntime-gpu>=1.18.0
+torch>=2.3.0
+torchvision>=0.18.0
+git+https://github.com/facebookresearch/sam2.git
