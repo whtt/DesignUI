@@ -103,7 +103,7 @@ adapters/ocr.py
 adapters/segmenter.py
   SegmenterAdapter -> PlaceholderSegmenter
 adapters/sam2.py
-  SegmenterAdapter -> Sam2TinySegmenter -> future larger SAM2 variants
+  SegmenterAdapter -> Sam2Segmenter
 adapters/background.py
   BackgroundRepairAdapter -> PlaceholderBackgroundRepair -> LightweightBackgroundRepair -> future InpaintingRepairAdapter
 adapters/style.py
@@ -116,13 +116,15 @@ Only the adapter implementation should know model-specific details. The stage ou
 
 Lightweight detection is optional. `DetectStage` attempts `LightweightDetector` only when `algorithms.detector` requests `lightweight_detector`; otherwise it uses the placeholder detector. The current implementation uses SVG rectangle parsing for SVG inputs and Pillow-based edge/background connected components for raster images. It is a region-proposal algorithm, not a semantic detector.
 
-SAM2 is optional. `SegmentStage` attempts `Sam2TinySegmenter` only when `algorithms.segmenter` requests `sam2`; otherwise it uses the placeholder segmenter. If SAM2 dependencies, checkpoint, device, or model initialization fail, the stage records a fallback reason and completes with placeholder masks.
+OmniParser detection is optional. `DetectStage` attempts `OmniParserDetector` when `algorithms.detector = omniparser`. The adapter keeps OmniParser dependencies isolated by launching `scripts/run_omniparser_detector.py` in the `designui_omni` conda environment and reading proposal JSON. If the subprocess, weights, or model output fail, detection falls back to `LightweightDetector` and then `PlaceholderDetector`.
+
+SAM2 is optional. `SegmentStage` attempts `Sam2Segmenter` when `algorithms.segmenter` requests `sam2` or a size-specific value such as `sam2_small`; otherwise it uses the placeholder segmenter. If SAM2 dependencies, checkpoint, device, or model initialization fail, the stage records a fallback reason and completes with placeholder masks.
 
 RapidOCR is optional. `TextProtectStage` attempts `RapidOcrProtector` only when `algorithms.ocr` requests `rapidocr`; otherwise it uses the placeholder OCR protector. If RapidOCR or ONNX Runtime is unavailable, the stage records a fallback reason and completes with placeholder text locks.
 
 Lightweight style transfer is optional. `StyleStage` attempts `LightweightStyleTransferAdapter` only when `algorithms.style` requests `lightweight_style_transfer`; otherwise it uses the placeholder style adapter. The current implementation uses Pillow-based color-statistics transfer from a reference image or `global_style.palette`, so it runs locally without GPU or large model dependencies.
 
-Lightweight background repair is optional and layout-aware. `BackgroundRepairStage` skips repair when `output.preserve_layout = true`. When layout preservation is disabled and `algorithms.background_repair = lightweight_background_repair`, it writes local repair patches using surrounding color statistics and blur. Future prompt-guided inpainting adapters can replace this behind the same repair manifest contract.
+Lightweight background repair is optional and layout-aware. `BackgroundRepairStage` skips repair when `output.preserve_layout = true`. When layout preservation is disabled and `algorithms.background_repair = lightweight_background_repair`, it writes local repair patches using OpenCV Telea inpainting when available and Pillow ring-fill as fallback. In `mask_mode = auto`, small UI controls use bbox repair to remove translucent widgets more completely, while larger objects can still use segmentation masks. Future prompt-guided inpainting adapters can replace this behind the same repair manifest contract.
 
 ## Visual Debug Artifacts
 

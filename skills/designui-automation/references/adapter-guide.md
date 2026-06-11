@@ -51,7 +51,7 @@ Use this pattern when optional adapters fail:
   "actual_adapter": "placeholder_segmenter",
   "model": null,
   "fallback": {
-    "requested_adapter": "sam2_tiny_segmenter",
+    "requested_adapter": "sam2_segmenter",
     "fallback_adapter": "placeholder_segmenter",
     "reason": "checkpoint missing"
   }

@@ -18,7 +18,7 @@
 - Placeholder OCR/text protection stage.
 - Placeholder background repair stage.
 - Optional lightweight detector with safe placeholder fallback.
-- Optional SAM2.1 tiny segmenter with safe placeholder fallback.
+- Optional SAM2.1 segmenter with safe placeholder fallback.
 - Optional RapidOCR lightweight OCR adapter with safe placeholder fallback.
 - Optional lightweight local style-transfer adapter with safe placeholder fallback.
 - Future polygon/lasso/brush mask correction.

@@ -41,7 +41,8 @@ Every stage owns its output directory under `runs/{run_id}/`.
 ## Current Real Adapters
 
 - `LightweightDetector`: local region proposals for SVG and PNG/JPG.
-- `Sam2TinySegmenter`: optional SAM2.1 tiny segmentation.
+- `OmniParserDetector`: optional UI element detection through an isolated OmniParser subprocess.
+- `Sam2Segmenter`: optional SAM2.1 segmentation.
 - `RapidOcrProtector`: optional RapidOCR text detection.
 - `LightweightStyleTransferAdapter`: local color-statistics style transfer.
 - `ContractReviewer`: contract-level review, not visual VLM review.

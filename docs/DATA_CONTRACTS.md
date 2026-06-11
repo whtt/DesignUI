@@ -162,6 +162,41 @@ When lightweight detection runs successfully, `actual_adapter` becomes `lightwei
 
 When lightweight detection cannot find candidates, `actual_adapter` becomes `placeholder_detector` and `fallback` records `requested_adapter`, `fallback_adapter`, and `reason`.
 
+When OmniParser detection runs successfully, `actual_adapter` becomes `omniparser_detector`, `model` records the isolated subprocess environment and v2 icon-detect model path, and detections include the raw OmniParser proposal label:
+
+```json
+{
+  "schema_version": "1.0",
+  "requested_algorithm": "omniparser",
+  "actual_adapter": "omniparser_detector",
+  "manual_regions_used": false,
+  "model": {
+    "model_family": "omniparser",
+    "version": "v2",
+    "engine": "ultralytics_icon_detect",
+    "env_name": "designui_omni",
+    "model_path": "models/omniparser/icon_detect/model.pt"
+  },
+  "fallback": null,
+  "detections": [
+    {
+      "detection_id": "det_submit_button_001",
+      "element_id": "submit_button",
+      "label": "button",
+      "bbox": [617, 210, 854, 294],
+      "confidence": 0.9723,
+      "source": "omniparser_detector",
+      "proposal": {
+        "raw_label": "icon",
+        "raw_class_id": 0
+      }
+    }
+  ]
+}
+```
+
+When OmniParser is unavailable or returns no UI regions, detection falls back to `lightweight_detector` first, then `placeholder_detector`.
+
 ## Text Protect Manifest
 
 ```json
@@ -232,14 +267,14 @@ When RapidOCR cannot run, `actual_adapter` becomes `placeholder_ocr_protector` a
 ```json
 {
   "schema_version": "1.0",
-  "requested_algorithm": "sam2",
-  "actual_adapter": "sam2_tiny_segmenter",
+  "requested_algorithm": "sam2_small",
+  "actual_adapter": "sam2_segmenter",
   "model": {
     "model_family": "sam2",
-    "model_size": "tiny",
-    "checkpoint": "models/sam2/sam2.1_hiera_tiny.pt",
-    "model_cfg": "configs/sam2.1/sam2.1_hiera_t.yaml",
-    "device": "cpu"
+    "model_size": "small",
+    "checkpoint": "models/sam2/sam2.1_hiera_small.pt",
+    "model_cfg": "configs/sam2.1/sam2.1_hiera_s.yaml",
+    "device": "cuda"
   },
   "fallback": null,
   "debug_artifacts": {
@@ -253,10 +288,10 @@ When RapidOCR cannot run, `actual_adapter` becomes `placeholder_ocr_protector` a
       "mask_png_path": "03_segment/masks/mask_det_primary_buttons_001.png",
       "bbox": [64, 64, 256, 128],
       "confidence": 0.91,
-      "source": "sam2_tiny_segmenter",
+      "source": "sam2_segmenter",
       "model": {
         "model_family": "sam2",
-        "model_size": "tiny"
+        "model_size": "small"
       }
     }
   ]

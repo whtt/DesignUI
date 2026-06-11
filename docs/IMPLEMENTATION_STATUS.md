@@ -2,7 +2,7 @@
 
 本文档记录当前本地 UI 和自动化 UI 图生成 pipeline 的真实接入状态。
 
-结论：当前版本已经把“本地 UI -> 生成 job config -> 跑完整 pipeline -> 产出 run artifacts -> 展示调试图和 stage 详情”的工程链路接通。轻量本地区域检测、SAM2.1 tiny 分割、RapidOCR 轻量 OCR 和轻量本地风格迁移已经作为可选本地能力接入；语义检测、开放词汇检测、inpainting、参数化 UI 重绘、大模型风格生成和视觉自审等能力仍未接入。
+结论：当前版本已经把“本地 UI -> 生成 job config -> 跑完整 pipeline -> 产出 run artifacts -> 展示调试图和 stage 详情”的工程链路接通。轻量本地区域检测、SAM2.1 分割、RapidOCR 轻量 OCR 和轻量本地风格迁移已经作为可选本地能力接入；语义检测、开放词汇检测、inpainting、参数化 UI 重绘、大模型风格生成和视觉自审等能力仍未接入。
 
 ## 已完成项
 
@@ -114,21 +114,23 @@
 - Completed: added `04_background_repair`, which writes repair manifests, patch PNG files, and `background_repair_preview.png`.
 - Completed: background repair skips work when `output.preserve_layout = true`.
 - Completed: optional `LightweightBackgroundRepair` creates real local repair patch PNGs when layout preservation is disabled.
+- Completed: background repair prefers OpenCV Telea inpainting when available, with Pillow ring-fill fallback.
+- Completed: background repair supports `mask_mode = auto`, using bbox repair for small UI controls and segmentation-mask repair for larger regions.
 - Completed: lightweight background repair regions are labeled `LIGHT REPAIR`; placeholder fallback regions are labeled `INPAINT TODO`.
 - Completed: UI now displays text protection and background repair previews as independent debug cards.
 - Completed: `06_compose/final.png` applies real lightweight background repairs and skips placeholder background repair overlays so visible inpainting markers do not leak into final output.
 - Still not connected: real OCR text content regression and real inpainting models.
 
-### SAM2 tiny segmentation
+### SAM2 segmentation
 
-- Completed: added optional `Sam2TinySegmenter` for `algorithms.segmenter = sam2`.
+- Completed: added optional `Sam2Segmenter` for `algorithms.segmenter = sam2` and size-specific values such as `sam2_small`.
 - Completed: added `configs/sample_sam2_job.json` for SAM2-requested smoke tests.
-- Completed: added `docs/MODEL_SETUP.md` and `scripts/download_sam2_tiny.py` for local checkpoint setup.
+- Completed: added `docs/MODEL_SETUP.md` and `scripts/download_sam2_checkpoint.py` for local checkpoint setup.
 - Completed: `03_segment/segmentation_manifest.json` now records `model` and `fallback` metadata.
 - Completed: when SAM2 dependencies, checkpoint, or device setup fail, the pipeline falls back to `PlaceholderSegmenter` and still completes.
-- Completed local deployment: `.venv` uses Python 3.10 with CPU PyTorch and SAM2 installed.
-- Completed local deployment: `models/sam2/sam2.1_hiera_tiny.pt` is downloaded locally and ignored by Git.
-- Verified local run: UI and CLI can use `actual_adapter = sam2_tiny_segmenter`, `device = cpu`, `fallback = null`.
+- Completed local deployment: conda `base` uses Python 3.13 with CUDA PyTorch and SAM2 installed.
+- Completed local deployment: `models/sam2/sam2.1_hiera_small.pt` is downloaded locally and ignored by Git.
+- Verified local run: CLI can use `actual_adapter = sam2_segmenter`, `model_size = small`, `device = cuda`, `fallback = null`.
 
 ### RapidOCR lightweight OCR
 
@@ -137,7 +139,7 @@
 - Completed: `02_ocr_protect/text_protect_manifest.json` now records `model` and `fallback` metadata.
 - Completed: RapidOCR outputs real text boxes, recognized text, confidence scores, and polygon points.
 - Completed: when RapidOCR dependencies or inference fail, the pipeline falls back to `PlaceholderOcrProtector` and still completes.
-- Completed local deployment: `.venv` uses RapidOCR with ONNX Runtime on CPU.
+- Completed local deployment: conda `base` uses RapidOCR with ONNX Runtime GPU available.
 - Verified local run: CLI can use `actual_adapter = rapidocr_protector`, `fallback = null`.
 
 ### Lightweight style transfer
@@ -163,6 +165,15 @@
 - Completed: when lightweight detection finds no candidates or fails, the pipeline falls back to `PlaceholderDetector` and still completes.
 - Verified local run: CLI can use `actual_adapter = lightweight_detector`, `fallback = null`.
 - Still not connected: YOLO26, Grounding DINO, Grounded SAM, semantic UI class detection, VLM region proposals, NMS tuning, and label-aware region matching.
+
+### OmniParser UI element detection
+
+- Completed: added optional `OmniParserDetector` for `algorithms.detector = omniparser`.
+- Completed: added `scripts/run_omniparser_detector.py` subprocess runner.
+- Completed: added `scripts/download_omniparser_weights.py` and `requirements-omniparser.txt` for isolated deployment.
+- Intended deployment: main DesignUI can stay in the existing base environment; OmniParser runs in `conda` environment `designui_omni` with Python 3.12.
+- Verified local run: CLI can use `actual_adapter = omniparser_detector`, `fallback = null` on a raster UI smoke image.
+- Verified local run: user-provided game UI screenshot can run through OmniParser detection, SAM2 small CUDA segmentation, RapidOCR, and OpenCV background repair.
 
 ### 文档
 
@@ -212,8 +223,8 @@
 
 ### 分割算法
 
-- 已接入：下拉框里的 `SAM2` 会请求可选本地 SAM2.1 tiny。
-- 当前可选真实执行：`Sam2TinySegmenter`，会从检测框生成真实 mask。
+- 已接入：下拉框里的 `SAM2` 会请求可选本地 SAM2.1。
+- 当前可选真实执行：`Sam2Segmenter`，会从检测框生成真实 mask。
 - 当前默认执行：`PlaceholderSegmenter`。
 - 未接入：YOLO26 segmentation。
 - 未接入：mask 边缘精修。

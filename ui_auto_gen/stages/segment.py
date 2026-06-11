@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ui_auto_gen.adapters import PlaceholderSegmenter, Sam2TinySegmenter
+from ui_auto_gen.adapters import PlaceholderSegmenter, Sam2Segmenter
 from ui_auto_gen.schemas import PipelineContext, StageResult
 from ui_auto_gen.stages.base import PipelineStage
 from ui_auto_gen.utils import read_json, write_json
@@ -73,16 +73,24 @@ class SegmentStage(PipelineStage):
         base_image: Path,
         repo_root: Path,
     ) -> tuple[object, list[dict], dict | None]:
-        if requested_algorithm in {"sam2", "sam2_tiny", "sam2.1_hiera_tiny"}:
+        if requested_algorithm in {
+            "sam2",
+            "sam2_small",
+            "sam2.1_hiera_small",
+            "sam2_tiny",
+            "sam2.1_hiera_tiny",
+            "sam2_base_plus",
+            "sam2_large",
+        }:
             try:
-                adapter = Sam2TinySegmenter.from_env(repo_root)
+                adapter = Sam2Segmenter.from_env(repo_root, requested_size=requested_algorithm)
                 masks = adapter.segment(detections, masks_dir, image_size, base_image=base_image)
                 return adapter, masks, None
             except Exception as exc:
                 fallback_adapter = PlaceholderSegmenter()
                 masks = fallback_adapter.segment(detections, masks_dir, image_size, base_image=base_image)
                 return fallback_adapter, masks, {
-                    "requested_adapter": "sam2_tiny_segmenter",
+                    "requested_adapter": "sam2_segmenter",
                     "fallback_adapter": fallback_adapter.adapter_name,
                     "reason": str(exc),
                 }
@@ -95,10 +103,10 @@ class SegmentStage(PipelineStage):
 def _notes(adapter_name: str, mask_count: int, fallback: dict | None) -> list[str]:
     if fallback:
         return [
-            f"Requested SAM2 tiny but fell back to {adapter_name}.",
+            f"Requested SAM2 but fell back to {adapter_name}.",
             f"Created {mask_count} fallback placeholder mask manifests.",
             f"Fallback reason: {fallback['reason']}",
         ]
-    if adapter_name == "sam2_tiny_segmenter":
-        return [f"Created {mask_count} SAM2 tiny mask manifests."]
+    if adapter_name == "sam2_segmenter":
+        return [f"Created {mask_count} SAM2 mask manifests."]
     return [f"Created {mask_count} placeholder mask manifests."]

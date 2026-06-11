@@ -1,7 +1,7 @@
 # CPU dependency set for established optional algorithms.
 # Installs:
 # - RapidOCR text protection with ONNX Runtime CPU
-# - SAM2 tiny segmentation with PyTorch CPU
+# - SAM2 segmentation with PyTorch CPU
 --index-url https://download.pytorch.org/whl/cpu
 --extra-index-url https://pypi.org/simple
 

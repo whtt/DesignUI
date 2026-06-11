@@ -1,0 +1,9 @@
+# Isolated dependency set for the OmniParser detector subprocess.
+# Recommended environment:
+#   conda create -n designui_omni python=3.12
+#   conda run -n designui_omni python -m pip install -r requirements-omniparser.txt
+#
+# The main DesignUI pipeline can remain in the existing base environment.
+Pillow>=12.0.0
+opencv-python-headless>=4.9.0
+ultralytics==8.3.70

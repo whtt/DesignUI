@@ -4,4 +4,4 @@ Pillow>=12.0.0
 
 # Established optional model-backed algorithms:
 # - RapidOCR text protection: install requirements-cpu.txt or requirements-gpu.txt
-# - SAM2 tiny segmentation: install requirements-cpu.txt or requirements-gpu.txt
+# - SAM2 segmentation: install requirements-cpu.txt or requirements-gpu.txt

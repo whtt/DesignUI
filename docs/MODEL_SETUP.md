@@ -35,27 +35,65 @@ actual_adapter = lightweight_detector
 fallback = null
 ```
 
-## SAM2 Tiny Segmentation
+## OmniParser UI Element Detection
 
-DesignUI can use SAM2.1 tiny for the `03_segment` stage when `algorithms.segmenter` is set to `sam2`.
+DesignUI can use OmniParser v2 icon detection for the `02_detect` stage when `algorithms.detector` is set to `omniparser`.
+
+Recommended deployment keeps OmniParser isolated from the main DesignUI environment:
+
+```powershell
+conda create -n designui_omni python=3.12
+conda run -n designui_omni python -m pip install -r requirements-omniparser.txt
+python scripts/download_omniparser_weights.py
+```
+
+Default settings:
+
+```powershell
+$env:DESIGNUI_OMNIPARSER_ENV="designui_omni"
+$env:DESIGNUI_OMNIPARSER_MODEL="models/omniparser/icon_detect/model.pt"
+$env:DESIGNUI_OMNIPARSER_BOX_THRESHOLD="0.05"
+```
+
+The main pipeline calls OmniParser through a subprocess. If OmniParser is unavailable or returns no regions, detection falls back to the lightweight local detector and then to placeholder detection.
+
+### Smoke Test
+
+Use a real PNG/JPG UI screenshot for this smoke test. The existing SVG placeholder sample is not suitable for validating OmniParser because the detector expects raster UI pixels.
+
+```powershell
+python -B -m ui_auto_gen.cli run --config path\to\omniparser_ui_job.json --run-id omniparser_smoke --overwrite
+```
+
+Successful runs should record:
+
+```text
+actual_adapter = omniparser_detector
+fallback = null
+```
+
+## SAM2 Segmentation
+
+DesignUI can use SAM2.1 for the `03_segment` stage when `algorithms.segmenter` is set to `sam2` or a size-specific value such as `sam2_small`.
 
 Current behavior:
 
-- If `sam2`, `torch`, and the checkpoint are available, `Sam2TinySegmenter` generates real mask PNG files from detection boxes.
+- If `sam2`, `torch`, and the checkpoint are available, `Sam2Segmenter` generates real mask PNG files from detection boxes.
 - If anything is missing or initialization fails, `SegmentStage` falls back to `PlaceholderSegmenter`.
 - The segmentation manifest records `requested_algorithm`, `actual_adapter`, `model`, and `fallback`.
 
 Default checkpoint path:
 
 ```text
-models/sam2/sam2.1_hiera_tiny.pt
+models/sam2/sam2.1_hiera_small.pt
 ```
 
 Environment variables:
 
 ```powershell
-$env:DESIGNUI_SAM2_CHECKPOINT="D:\models\sam2.1_hiera_tiny.pt"
-$env:DESIGNUI_SAM2_MODEL_CFG="configs/sam2.1/sam2.1_hiera_t.yaml"
+$env:DESIGNUI_SAM2_CHECKPOINT="D:\models\sam2.1_hiera_small.pt"
+$env:DESIGNUI_SAM2_MODEL_CFG="configs/sam2.1/sam2.1_hiera_s.yaml"
+$env:DESIGNUI_SAM2_MODEL_SIZE="small"
 $env:DESIGNUI_SAM2_DEVICE="auto"
 ```
 
@@ -88,10 +126,10 @@ Expand-Archive -LiteralPath external\sam2-main.zip -DestinationPath external -Fo
 .\.venv\Scripts\python.exe -m pip install -e external\sam2-main
 ```
 
-Download the tiny checkpoint:
+Download the small checkpoint:
 
 ```powershell
-.\.venv\Scripts\python.exe scripts\download_sam2_tiny.py
+.\.venv\Scripts\python.exe scripts\download_sam2_checkpoint.py --size small
 ```
 
 On Windows, the SAM2 project recommends WSL with Ubuntu for installation. CPU inference may be slow, but the project will fall back safely if SAM2 cannot run.
@@ -109,7 +147,7 @@ Then choose `SAM2` in the segmentation dropdown.
 ### Smoke Test
 
 ```powershell
-.\.venv\Scripts\python.exe -B -m ui_auto_gen.cli run --config configs\sample_sam2_job.json --run-id sam2_tiny_smoke
+.\.venv\Scripts\python.exe -B -m ui_auto_gen.cli run --config configs\sample_sam2_small_job.json --run-id sam2_small_smoke
 ```
 
 If SAM2 is not installed yet, this command should still complete with `actual_adapter = placeholder_segmenter` and a recorded fallback reason.
@@ -121,9 +159,9 @@ As of the latest local deployment:
 - Python runtime: `.venv` created with Python 3.10.
 - PyTorch: CPU build installed.
 - CUDA: unavailable on this machine.
-- SAM2: installed from the GitHub zip under `external/sam2-main`.
-- Checkpoint: `models/sam2/sam2.1_hiera_tiny.pt`.
-- Verified run: `actual_adapter = sam2_tiny_segmenter`, `device = cpu`, `fallback = null`.
+- SAM2: installed from GitHub.
+- Checkpoint: `models/sam2/sam2.1_hiera_small.pt`.
+- Verified run: `actual_adapter = sam2_segmenter`, `model_size = small`, `device = cuda`, `fallback = null`.
 
 ## RapidOCR Lightweight OCR
 
@@ -207,4 +245,22 @@ Successful runs should record:
 actual_adapter = lightweight_style_transfer_adapter
 model.engine = pillow
 fallback = null
+```
+
+## Lightweight Background Repair
+
+DesignUI uses `LightweightBackgroundRepair` when `algorithms.background_repair = lightweight_background_repair` and `output.preserve_layout = false`.
+
+Current behavior:
+
+- Uses OpenCV Telea inpainting when `cv2` is available.
+- Falls back to the Pillow ring-fill repair when OpenCV is unavailable.
+- Uses `DESIGNUI_BACKGROUND_REPAIR_MASK_MODE=auto` by default.
+- In `auto` mode, small UI controls are repaired by bbox so translucent buttons/icons are fully removed; larger objects still prefer segmentation masks.
+
+Environment variables:
+
+```powershell
+$env:DESIGNUI_BACKGROUND_REPAIR_MASK_MODE="auto"
+$env:DESIGNUI_BACKGROUND_REPAIR_BBOX_MAX_AREA="0.12"
 ```

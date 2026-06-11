@@ -10,7 +10,8 @@ Current real or optional local capabilities:
 
 - lightweight local region detection
 - manual rectangle selection
-- SAM2.1 tiny segmentation
+- OmniParser UI element detection
+- SAM2.1 segmentation
 - RapidOCR text protection
 - lightweight color-statistics style transfer
 - raster cutout and composition
@@ -64,6 +65,14 @@ Optional algorithm dependencies:
 .\.venv\Scripts\python.exe -m pip install -r requirements-cpu.txt
 # or, for CUDA 12.1 environments:
 .\.venv\Scripts\python.exe -m pip install -r requirements-gpu.txt
+```
+
+Optional OmniParser detector environment:
+
+```powershell
+conda create -n designui_omni python=3.12
+conda run -n designui_omni python -m pip install -r requirements-omniparser.txt
+python scripts\download_omniparser_weights.py
 ```
 
 ## File Locator

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+import os
 from pathlib import Path
 from typing import Any
 
@@ -86,13 +87,15 @@ class PlaceholderBackgroundRepair(BackgroundRepairAdapter):
 class LightweightBackgroundRepair(BackgroundRepairAdapter):
     adapter_name = "lightweight_background_repair"
 
-    def __init__(self, blur_radius: int = 14) -> None:
+    def __init__(self, blur_radius: int = 14, mask_mode: str | None = None) -> None:
         self.blur_radius = blur_radius
+        self.mask_mode = (mask_mode or os.environ.get("DESIGNUI_BACKGROUND_REPAIR_MASK_MODE", "auto")).lower()
         self.model_metadata = {
             "model_family": "classical_inpaint_approximation",
             "model_size": "tiny",
-            "engine": "pillow_ring_fill",
+            "engine": "opencv_telea_or_pillow_ring_fill",
             "blur_radius": blur_radius,
+            "mask_mode": self.mask_mode,
         }
 
     def create_repairs(
@@ -113,27 +116,31 @@ class LightweightBackgroundRepair(BackgroundRepairAdapter):
             x1, y1, x2, y2 = clamp_bbox(cutout["bbox"], image_size)
             repair_path = repairs_dir / f"{repair_id}.json"
             repair_asset_path = repairs_dir / f"{repair_id}.png"
+            use_bbox_mask = _use_bbox_mask(cutout, image_size, self.mask_mode)
+            mask_path = None if use_bbox_mask else Path(cutout["mask_png_path"]) if cutout.get("mask_png_path") else None
             repair_asset = _lightweight_patch(
                 base,
                 (x1, y1, x2, y2),
                 self.blur_radius,
-                mask_path=Path(cutout["mask_png_path"]) if cutout.get("mask_png_path") else None,
+                mask_path=mask_path,
                 image_size=image_size,
             )
             save_png(repair_asset, repair_asset_path)
+            repair_scope = "bbox" if use_bbox_mask or not cutout.get("mask_png_path") else "segmentation_mask"
+            repair_mask_path = None if use_bbox_mask else cutout.get("mask_png_path")
             payload = {
                 "schema_version": "1.0",
                 "repair_id": repair_id,
                 "cutout_id": cutout["cutout_id"],
                 "bbox": [x1, y1, x2, y2],
                 "repair_asset_path": str(repair_asset_path),
-                "repair_mask_path": cutout.get("mask_png_path"),
-                "repair_scope": "segmentation_mask" if cutout.get("mask_png_path") else "bbox",
+                "repair_mask_path": repair_mask_path,
+                "repair_scope": repair_scope,
                 "source": self.adapter_name,
                 "model": self.model_metadata,
                 "placeholder_visual": None,
                 "future_adapter": "large_model_background_inpainting",
-                "note": "Lightweight local background repair using surrounding color statistics and blur. Future model adapters can replace this with prompt-guided inpainting.",
+                "note": "Lightweight local background repair using OpenCV Telea inpainting when available, with a Pillow ring-fill fallback. Future model adapters can replace this with prompt-guided inpainting.",
             }
             write_json(repair_path, payload)
             repairs.append(
@@ -142,8 +149,8 @@ class LightweightBackgroundRepair(BackgroundRepairAdapter):
                     "cutout_id": cutout["cutout_id"],
                     "repair_path": str(repair_path),
                     "repair_asset_path": str(repair_asset_path),
-                    "repair_mask_path": cutout.get("mask_png_path"),
-                    "repair_scope": "segmentation_mask" if cutout.get("mask_png_path") else "bbox",
+                    "repair_mask_path": repair_mask_path,
+                    "repair_scope": repair_scope,
                     "bbox": [x1, y1, x2, y2],
                     "source": self.adapter_name,
                     "model": self.model_metadata,
@@ -180,13 +187,23 @@ def _lightweight_patch(
     local_x2 = local_x1 + width
     local_y2 = local_y1 + height
     local_bbox = (local_x1, local_y1, local_x2, local_y2)
-    expanded_mask = _mask_for_region(
-        mask_path=mask_path,
-        region=(ex1, ey1, ex2, ey2),
-        region_size=expanded.size,
-        image_size=image_size or base.size,
-    )
+    if mask_path is None:
+        expanded_mask = Image.new("L", expanded.size, 0)
+        expanded_draw = Image.new("L", expanded.size, 0)
+        expanded_draw.paste(255, local_bbox)
+        expanded_mask = expanded_draw
+    else:
+        expanded_mask = _mask_for_region(
+            mask_path=mask_path,
+            region=(ex1, ey1, ex2, ey2),
+            region_size=expanded.size,
+            image_size=image_size or base.size,
+        )
     target_mask = expanded_mask.crop(local_bbox)
+
+    opencv_patch = _opencv_inpaint_patch(expanded, expanded_mask, local_bbox, target_mask)
+    if opencv_patch is not None:
+        return opencv_patch
 
     full_mask = Image.new("L", expanded.size, 255)
     ring_mask = ImageChops.subtract(full_mask, expanded_mask)
@@ -195,6 +212,46 @@ def _lightweight_patch(
     filled.paste(expanded, (0, 0), ring_mask)
     filled = filled.filter(ImageFilter.GaussianBlur(radius=blur_radius))
     patch = filled.crop(local_bbox).filter(ImageFilter.SMOOTH_MORE).convert("RGBA")
+    patch.putalpha(target_mask)
+    return patch
+
+
+def _use_bbox_mask(cutout: dict[str, Any], image_size: tuple[int, int], mask_mode: str) -> bool:
+    if mask_mode == "bbox":
+        return True
+    if mask_mode in {"segmentation", "segmentation_mask", "mask"}:
+        return False
+    bbox = cutout.get("bbox") or [0, 0, image_size[0], image_size[1]]
+    x1, y1, x2, y2 = clamp_bbox(bbox, image_size)
+    area_ratio = ((x2 - x1) * (y2 - y1)) / max(1, image_size[0] * image_size[1])
+    return area_ratio <= float(os.environ.get("DESIGNUI_BACKGROUND_REPAIR_BBOX_MAX_AREA", "0.12"))
+
+
+def _opencv_inpaint_patch(
+    expanded: Image.Image,
+    expanded_mask: Image.Image,
+    local_bbox: tuple[int, int, int, int],
+    target_mask: Image.Image,
+) -> Image.Image | None:
+    try:
+        import cv2
+        import numpy as np
+    except Exception:
+        return None
+
+    inpaint_mask = expanded_mask.filter(ImageFilter.MaxFilter(9)).point(lambda value: 255 if value > 8 else 0, mode="L")
+    if not inpaint_mask.getbbox():
+        return None
+
+    rgb = expanded.convert("RGB")
+    rgb_array = np.array(rgb)
+    mask_array = np.array(inpaint_mask)
+    try:
+        repaired = cv2.inpaint(rgb_array, mask_array, 5, cv2.INPAINT_TELEA)
+    except Exception:
+        return None
+
+    patch = Image.fromarray(repaired).convert("RGBA").crop(local_bbox).filter(ImageFilter.SMOOTH_MORE)
     patch.putalpha(target_mask)
     return patch
 

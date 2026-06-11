@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ui_auto_gen.adapters import LightweightDetector, PlaceholderDetector
+from ui_auto_gen.adapters import LightweightDetector, OmniParserDetector, PlaceholderDetector
 from ui_auto_gen.schemas import PipelineContext, StageResult
 from ui_auto_gen.stages.base import PipelineStage
 from ui_auto_gen.utils import read_json, write_json
@@ -101,6 +101,42 @@ class DetectStage(PipelineStage):
                     "reason": str(exc),
                 }
 
+        if requested_algorithm in {"omniparser", "omniparser_v2", "omniparser_detector"}:
+            try:
+                adapter = OmniParserDetector()
+                detections = adapter.detect(
+                    elements=elements,
+                    width=width,
+                    height=height,
+                    manual_regions=manual_regions,
+                    base_image=base_image,
+                )
+                return adapter, detections, None
+            except Exception as exc:
+                try:
+                    fallback_adapter = LightweightDetector()
+                    detections = fallback_adapter.detect(
+                        elements=elements,
+                        width=width,
+                        height=height,
+                        manual_regions=manual_regions,
+                        base_image=base_image,
+                    )
+                except Exception:
+                    fallback_adapter = PlaceholderDetector()
+                    detections = fallback_adapter.detect(
+                        elements=elements,
+                        width=width,
+                        height=height,
+                        manual_regions=manual_regions,
+                        base_image=base_image,
+                    )
+                return fallback_adapter, detections, {
+                    "requested_adapter": "omniparser_detector",
+                    "fallback_adapter": fallback_adapter.adapter_name,
+                    "reason": str(exc),
+                }
+
         adapter = PlaceholderDetector()
         detections = adapter.detect(
             elements=elements,
@@ -115,13 +151,15 @@ class DetectStage(PipelineStage):
 def _manifest_notes(adapter_name: str, manual_regions_used: bool, fallback: dict | None) -> list[str]:
     if fallback:
         return [
-            f"Requested lightweight detector but fell back to {adapter_name}.",
+            f"Requested detector fell back to {adapter_name}.",
             f"Fallback reason: {fallback['reason']}",
         ]
     if manual_regions_used:
         return ["Manual regions were used as authoritative detections."]
     if adapter_name == "lightweight_detector":
         return ["Lightweight detector generated local connected-component region proposals."]
+    if adapter_name == "omniparser_detector":
+        return ["OmniParser generated UI element detections."]
     return ["Placeholder detector created deterministic boxes. Replace this adapter with YOLO/Grounded-SAM later."]
 
 
@@ -135,4 +173,6 @@ def _result_notes(adapter_name: str, detection_count: int, manual_regions_used: 
         return [f"Created {detection_count} detections from manual regions."]
     if adapter_name == "lightweight_detector":
         return [f"Created {detection_count} lightweight region detections."]
+    if adapter_name == "omniparser_detector":
+        return [f"Created {detection_count} OmniParser UI detections."]
     return [f"Created {detection_count} placeholder detections."]

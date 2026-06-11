@@ -1,8 +1,12 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+import json
 import os
 from pathlib import Path
+import subprocess
+import sys
+import tempfile
 from typing import Any
 import xml.etree.ElementTree as ET
 
@@ -118,6 +122,134 @@ class LightweightDetector(DetectorAdapter):
         return detections
 
 
+class OmniParserDetector(DetectorAdapter):
+    adapter_name = "omniparser_detector"
+
+    def __init__(
+        self,
+        env_name: str | None = None,
+        model_path: Path | None = None,
+        box_threshold: float | None = None,
+        max_regions: int | None = None,
+    ) -> None:
+        self.env_name = env_name or os.environ.get("DESIGNUI_OMNIPARSER_ENV", "designui_omni")
+        self.model_path = model_path or Path(
+            os.environ.get("DESIGNUI_OMNIPARSER_MODEL", "models/omniparser/icon_detect/model.pt")
+        )
+        self.box_threshold = box_threshold if box_threshold is not None else float(
+            os.environ.get("DESIGNUI_OMNIPARSER_BOX_THRESHOLD", "0.05")
+        )
+        self.max_regions = max_regions if max_regions is not None else int(
+            os.environ.get("DESIGNUI_OMNIPARSER_MAX_REGIONS", "24")
+        )
+        self.model_metadata = {
+            "model_family": "omniparser",
+            "version": "v2",
+            "engine": "ultralytics_icon_detect",
+            "env_name": self.env_name,
+            "model_path": str(self.model_path),
+            "box_threshold": self.box_threshold,
+            "max_regions": self.max_regions,
+        }
+
+    def detect(
+        self,
+        elements: list[dict[str, Any]],
+        width: int,
+        height: int,
+        manual_regions: list[dict[str, Any]] | None = None,
+        base_image: Path | None = None,
+    ) -> list[dict[str, Any]]:
+        if manual_regions:
+            return _manual_detections(manual_regions, width, height)
+        if base_image is None:
+            raise RuntimeError("OmniParser detection requires a base image path.")
+
+        proposals = self._run_omniparser(base_image=base_image, width=width, height=height, elements=elements)
+        if not proposals:
+            raise RuntimeError("OmniParser did not return any UI regions.")
+
+        detections = []
+        matched = _match_omniparser_proposals(elements, _dedupe_proposals(proposals), width, height)
+        for index, (element, proposal, match_score) in enumerate(matched, start=1):
+            element_id = element.get("element_id") or f"omniparser_region_{index:03d}"
+            detections.append(
+                {
+                    "detection_id": f"det_{element_id}_{index:03d}",
+                    "element_id": element_id,
+                    "label": element.get("type_hint") or proposal.get("label") or "ui_region",
+                    "bbox": _clamp_bbox(proposal["bbox"], width, height),
+                    "confidence": round(float(proposal.get("confidence", 0.0)), 4),
+                    "source": self.adapter_name,
+                    "model": self.model_metadata,
+                    "proposal": {
+                        "raw_label": proposal.get("label"),
+                        "raw_class_id": proposal.get("class_id"),
+                        "match_score": round(match_score, 4),
+                    },
+                }
+            )
+        return detections
+
+    def _run_omniparser(
+        self,
+        base_image: Path,
+        width: int,
+        height: int,
+        elements: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        repo_root = Path(__file__).resolve().parents[2]
+        runner = repo_root / "scripts" / "run_omniparser_detector.py"
+        model_path = self.model_path if self.model_path.is_absolute() else repo_root / self.model_path
+        if not model_path.exists():
+            raise FileNotFoundError(f"OmniParser icon detection model not found: {model_path}")
+
+        command = _omniparser_python_command(self.env_name)
+        with tempfile.NamedTemporaryFile("w", suffix=".json", encoding="utf-8", delete=False) as elements_file:
+            json.dump(elements, elements_file, ensure_ascii=False)
+            elements_path = Path(elements_file.name)
+        with tempfile.NamedTemporaryFile("w", suffix=".json", encoding="utf-8", delete=False) as output_file:
+            output_path = Path(output_file.name)
+
+        try:
+            completed = subprocess.run(
+                [
+                    *command,
+                    str(runner),
+                    "--image",
+                    str(base_image),
+                    "--width",
+                    str(width),
+                    "--height",
+                    str(height),
+                    "--elements-json",
+                    str(elements_path),
+                    "--model-path",
+                    str(model_path),
+                    "--box-threshold",
+                    str(self.box_threshold),
+                    "--max-regions",
+                    str(self.max_regions),
+                    "--output",
+                    str(output_path),
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+                cwd=repo_root,
+            )
+            if completed.returncode != 0:
+                detail = (completed.stderr or completed.stdout or "").strip()
+                raise RuntimeError(f"OmniParser runner failed with exit code {completed.returncode}: {detail}")
+            with output_path.open("r", encoding="utf-8") as handle:
+                payload = json.load(handle)
+            self.model_metadata.update(payload.get("model", {}))
+            return list(payload.get("proposals", []))
+        finally:
+            elements_path.unlink(missing_ok=True)
+            output_path.unlink(missing_ok=True)
+
+
 def _manual_detections(manual_regions: list[dict[str, Any]], width: int, height: int) -> list[dict[str, Any]]:
     detections = []
     for index, region in enumerate(manual_regions, start=1):
@@ -135,6 +267,102 @@ def _manual_detections(manual_regions: list[dict[str, Any]], width: int, height:
             }
         )
     return detections
+
+
+def _omniparser_python_command(env_name: str) -> list[str]:
+    python_path = os.environ.get("DESIGNUI_OMNIPARSER_PYTHON")
+    if python_path:
+        return [python_path]
+    conda_executable = os.environ.get("DESIGNUI_CONDA", "conda")
+    return [conda_executable, "run", "-n", env_name, "python"]
+
+
+def _clamp_bbox(bbox: list[int], width: int, height: int) -> list[int]:
+    x1, y1, x2, y2 = [int(round(value)) for value in bbox]
+    x1 = max(0, min(width - 1, x1))
+    y1 = max(0, min(height - 1, y1))
+    x2 = max(x1 + 1, min(width, x2))
+    y2 = max(y1 + 1, min(height, y2))
+    return [x1, y1, x2, y2]
+
+
+def _dedupe_proposals(proposals: list[dict[str, Any]], iou_threshold: float = 0.82) -> list[dict[str, Any]]:
+    kept: list[dict[str, Any]] = []
+    for proposal in sorted(proposals, key=lambda item: float(item.get("confidence", 0.0)), reverse=True):
+        if any(_bbox_iou(proposal["bbox"], existing["bbox"]) >= iou_threshold for existing in kept):
+            continue
+        kept.append(proposal)
+    return kept
+
+
+def _match_omniparser_proposals(
+    elements: list[dict[str, Any]],
+    proposals: list[dict[str, Any]],
+    width: int,
+    height: int,
+) -> list[tuple[dict[str, Any], dict[str, Any], float]]:
+    if not elements:
+        return [({}, proposal, float(proposal.get("confidence", 0.0))) for proposal in proposals[:1]]
+
+    available = list(proposals)
+    matches: list[tuple[dict[str, Any], dict[str, Any], float]] = []
+    for element in elements:
+        if not available:
+            break
+        scored = [(_proposal_match_score(element, proposal, width, height), proposal) for proposal in available]
+        scored.sort(key=lambda item: item[0], reverse=True)
+        score, proposal = scored[0]
+        available.remove(proposal)
+        matches.append((element, proposal, score))
+    return matches
+
+
+def _proposal_match_score(element: dict[str, Any], proposal: dict[str, Any], width: int, height: int) -> float:
+    bbox = proposal["bbox"]
+    x1, y1, x2, y2 = bbox
+    box_width = max(1, x2 - x1)
+    box_height = max(1, y2 - y1)
+    aspect = box_width / box_height
+    area_ratio = (box_width * box_height) / max(1, width * height)
+    confidence = float(proposal.get("confidence", 0.0))
+    descriptor = f"{element.get('name', '')} {element.get('type_hint', '')}".lower()
+    score = confidence
+
+    if any(token in descriptor for token in ("button", "btn", "按钮")):
+        score += _range_score(aspect, 1.6, 8.0) * 0.35
+        score += _range_score(area_ratio, 0.002, 0.08) * 0.18
+    if any(token in descriptor for token in ("icon", "avatar", "portrait", "头像", "图标")):
+        score += _range_score(aspect, 0.55, 1.8) * 0.32
+        score += _range_score(area_ratio, 0.0003, 0.04) * 0.18
+    if any(token in descriptor for token in ("card", "panel", "nav", "menu", "列表", "卡片")):
+        score += _range_score(aspect, 1.4, 10.0) * 0.24
+        score += _range_score(area_ratio, 0.004, 0.18) * 0.20
+    if any(token in descriptor for token in ("character", "person", "role", "角色", "人物")):
+        score += _range_score(aspect, 0.25, 1.4) * 0.16
+        score += _range_score(area_ratio, 0.03, 0.55) * 0.22
+
+    return score
+
+
+def _range_score(value: float, lower: float, upper: float) -> float:
+    if lower <= value <= upper:
+        return 1.0
+    if value < lower:
+        return max(0.0, value / max(lower, 1e-6))
+    return max(0.0, upper / max(value, 1e-6))
+
+
+def _bbox_iou(first: list[int], second: list[int]) -> float:
+    ax1, ay1, ax2, ay2 = first
+    bx1, by1, bx2, by2 = second
+    ix1 = max(ax1, bx1)
+    iy1 = max(ay1, by1)
+    ix2 = min(ax2, bx2)
+    iy2 = min(ay2, by2)
+    intersection = max(0, ix2 - ix1) * max(0, iy2 - iy1)
+    first_area = max(1, (ax2 - ax1) * (ay2 - ay1))
+    second_area = max(1, (bx2 - bx1) * (by2 - by1))
+    return intersection / max(1, first_area + second_area - intersection)
 
 
 def _manual_bbox(region: dict[str, Any], width: int, height: int) -> list[int]:

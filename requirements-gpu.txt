@@ -1,9 +1,10 @@
 # GPU dependency set for established optional algorithms.
-# Default target: NVIDIA CUDA 12.1 PyTorch wheels. Change the index URL
-# to the CUDA build that matches the deployment machine if needed.
+# Default target: NVIDIA CUDA 12.1 PyTorch wheels for fresh environments.
+# If a compatible GPU PyTorch build is already installed, do not reinstall it.
+# Change the index URL to the CUDA build that matches the deployment machine.
 # Installs:
 # - RapidOCR text protection with ONNX Runtime GPU
-# - SAM2 tiny segmentation with CUDA-enabled PyTorch
+# - SAM2 segmentation with CUDA-enabled PyTorch
 --index-url https://download.pytorch.org/whl/cu121
 --extra-index-url https://pypi.org/simple
 
