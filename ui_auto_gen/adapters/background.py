@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+import json
 import os
 from pathlib import Path
+import subprocess
+import tempfile
 from typing import Any
 
 from PIL import Image, ImageChops, ImageFilter, ImageStat
@@ -161,6 +164,113 @@ class LightweightBackgroundRepair(BackgroundRepairAdapter):
         return repairs
 
 
+class LamaBackgroundRepair(BackgroundRepairAdapter):
+    adapter_name = "lama_background_inpaint"
+
+    def __init__(self, env_name: str | None = None, mask_mode: str | None = None) -> None:
+        self.env_name = env_name or os.environ.get("DESIGNUI_INPAINT_ENV", "designui_inpaint")
+        self.mask_mode = (mask_mode or os.environ.get("DESIGNUI_BACKGROUND_REPAIR_MASK_MODE", "auto")).lower()
+        self.model_metadata = {
+            "model_family": "lama",
+            "engine": "iopaint_lama",
+            "env_name": self.env_name,
+            "device": os.environ.get("DESIGNUI_INPAINT_DEVICE", "cuda"),
+            "mask_mode": self.mask_mode,
+        }
+
+    def create_repairs(
+        self,
+        cutouts: list[dict[str, Any]],
+        repairs_dir: Path,
+        image_size: tuple[int, int],
+        base_image: Path | None = None,
+        preserve_layout: bool = True,
+    ) -> list[dict[str, Any]]:
+        if base_image is None:
+            raise RuntimeError("LaMa background repair requires a base image path.")
+        repairs_dir.mkdir(parents=True, exist_ok=True)
+        repair_regions = [_repair_region(cutout, image_size, self.mask_mode) for cutout in cutouts]
+        inpaint_mask = _combined_repair_mask(repair_regions, image_size)
+        if not inpaint_mask.getbbox():
+            return []
+
+        full_repaired_path = repairs_dir / "lama_background_canvas.png"
+        mask_path = repairs_dir / "lama_inpaint_mask.png"
+        save_png(inpaint_mask.convert("L"), mask_path)
+        self._run_lama(base_image=base_image, mask_path=mask_path, output_path=full_repaired_path)
+        repaired = load_rgba_image(full_repaired_path, *image_size)
+
+        repairs = []
+        for cutout, region in zip(cutouts, repair_regions, strict=False):
+            repair_id = f"repair_{cutout['cutout_id']}"
+            x1, y1, x2, y2 = clamp_bbox(cutout["bbox"], image_size)
+            repair_path = repairs_dir / f"{repair_id}.json"
+            repair_asset_path = repairs_dir / f"{repair_id}.png"
+            patch = repaired.crop((x1, y1, x2, y2)).convert("RGBA")
+            alpha = region["mask"].crop((x1, y1, x2, y2))
+            patch.putalpha(alpha)
+            save_png(patch, repair_asset_path)
+            payload = {
+                "schema_version": "1.0",
+                "repair_id": repair_id,
+                "cutout_id": cutout["cutout_id"],
+                "bbox": [x1, y1, x2, y2],
+                "repair_asset_path": str(repair_asset_path),
+                "repair_mask_path": str(mask_path),
+                "repair_scope": region["scope"],
+                "source": self.adapter_name,
+                "model": self.model_metadata,
+                "placeholder_visual": None,
+                "future_adapter": None,
+                "note": "LaMa background repair generated through IOPaint in an isolated subprocess environment.",
+            }
+            write_json(repair_path, payload)
+            repairs.append(
+                {
+                    "repair_id": repair_id,
+                    "cutout_id": cutout["cutout_id"],
+                    "repair_path": str(repair_path),
+                    "repair_asset_path": str(repair_asset_path),
+                    "repair_mask_path": str(mask_path),
+                    "repair_scope": region["scope"],
+                    "bbox": [x1, y1, x2, y2],
+                    "source": self.adapter_name,
+                    "model": self.model_metadata,
+                    "placeholder_visual": None,
+                    "future_adapter": None,
+                }
+            )
+        return repairs
+
+    def _run_lama(self, base_image: Path, mask_path: Path, output_path: Path) -> None:
+        runner = Path(__file__).resolve().parents[2] / "scripts" / "run_lama_inpaint.py"
+        payload = {
+            "image": str(base_image),
+            "mask": str(mask_path),
+            "output": str(output_path),
+            "device": self.model_metadata["device"],
+        }
+        with tempfile.NamedTemporaryFile("w", suffix=".json", encoding="utf-8", delete=False) as handle:
+            json.dump(payload, handle)
+            payload_path = Path(handle.name)
+        try:
+            command = _inpaint_python_command(self.env_name)
+            completed = subprocess.run(
+                [*command, str(runner), "--payload", str(payload_path)],
+                check=False,
+                capture_output=True,
+                text=True,
+                cwd=Path(__file__).resolve().parents[2],
+            )
+            if completed.returncode != 0:
+                detail = (completed.stderr or completed.stdout or "").strip()
+                raise RuntimeError(f"LaMa inpaint runner failed with exit code {completed.returncode}: {detail}")
+            if not output_path.exists():
+                raise RuntimeError(f"LaMa inpaint runner did not write output: {output_path}")
+        finally:
+            payload_path.unlink(missing_ok=True)
+
+
 def _repair_color(index: int) -> tuple[int, int, int]:
     colors = [(244, 63, 94), (217, 70, 239), (14, 165, 233), (234, 179, 8)]
     return colors[index % len(colors)]
@@ -225,6 +335,40 @@ def _use_bbox_mask(cutout: dict[str, Any], image_size: tuple[int, int], mask_mod
     x1, y1, x2, y2 = clamp_bbox(bbox, image_size)
     area_ratio = ((x2 - x1) * (y2 - y1)) / max(1, image_size[0] * image_size[1])
     return area_ratio <= float(os.environ.get("DESIGNUI_BACKGROUND_REPAIR_BBOX_MAX_AREA", "0.12"))
+
+
+def _repair_region(cutout: dict[str, Any], image_size: tuple[int, int], mask_mode: str) -> dict[str, Any]:
+    x1, y1, x2, y2 = clamp_bbox(cutout.get("bbox") or [0, 0, image_size[0], image_size[1]], image_size)
+    use_bbox_mask = _use_bbox_mask(cutout, image_size, mask_mode)
+    if use_bbox_mask or not cutout.get("mask_png_path"):
+        mask = Image.new("L", image_size, 0)
+        mask.paste(255, (x1, y1, x2, y2))
+        return {"scope": "bbox", "mask": _dilate_mask(mask)}
+
+    mask_path = Path(cutout["mask_png_path"])
+    mask = _mask_for_region(mask_path, (0, 0, image_size[0], image_size[1]), image_size, image_size)
+    return {"scope": "segmentation_mask", "mask": _dilate_mask(mask)}
+
+
+def _combined_repair_mask(regions: list[dict[str, Any]], image_size: tuple[int, int]) -> Image.Image:
+    combined = Image.new("L", image_size, 0)
+    for region in regions:
+        combined = ImageChops.lighter(combined, region["mask"])
+    return combined
+
+
+def _dilate_mask(mask: Image.Image) -> Image.Image:
+    grow = int(os.environ.get("DESIGNUI_BACKGROUND_REPAIR_MASK_GROW", "17"))
+    grow = max(3, grow if grow % 2 == 1 else grow + 1)
+    return mask.convert("L").filter(ImageFilter.MaxFilter(grow)).point(lambda value: 255 if value > 8 else 0, mode="L")
+
+
+def _inpaint_python_command(env_name: str) -> list[str]:
+    python_path = os.environ.get("DESIGNUI_INPAINT_PYTHON")
+    if python_path:
+        return [python_path]
+    conda_executable = os.environ.get("DESIGNUI_CONDA", "conda")
+    return [conda_executable, "run", "-n", env_name, "python"]
 
 
 def _opencv_inpaint_patch(

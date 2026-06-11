@@ -111,14 +111,15 @@ python -B -m ui_auto_gen.cli run --config configs/sample_job.json --output-root 
 - `configs/sample_rapidocr_job.json`：请求 RapidOCR 文字保护的示例配置，缺依赖时会 fallback。
 - `configs/sample_lightweight_style_job.json`：请求轻量风格迁移的示例配置。
 - `configs/sample_lightweight_background_job.json`：请求轻量背景修复并关闭保持原布局的示例配置。
+- `configs/sample_lama_background_job.json`：请求 LaMa/IOPaint 图像补全背景修复的示例配置。
 - `ui_auto_gen/stages/`：独立 pipeline stage。
 - `ui_auto_gen/web/`：本地 Web UI 和 API 服务。
 - `skills/designui-automation/`：面向 Codex/agent 的渐进式自动化流程 skill。
 
 ### 当前限制
 
-- 尚未接入语义目标检测、inpainting 或大模型风格生成。
-- 已接入可选轻量检测、SAM2.1 分割、RapidOCR 轻量 OCR 和轻量本地风格迁移；其他 UI 选项如 `YOLO26`、`ControlNet + IPAdapter` 当前仍只是记录选择。
+- 尚未接入语义目标检测或大模型风格生成。
+- 已接入可选轻量检测、SAM2.1 分割、RapidOCR 轻量 OCR、轻量本地风格迁移和 LaMa/IOPaint 背景补全；其他 UI 选项如 `YOLO26`、`ControlNet + IPAdapter` 当前仍只是记录选择。
 - 最终图目前通常是底图或文生图占位 SVG。
 - 真实模型能力会在后续迭代中逐步接入。
 

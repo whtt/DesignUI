@@ -1,4 +1,9 @@
-from ui_auto_gen.adapters.background import BackgroundRepairAdapter, LightweightBackgroundRepair, PlaceholderBackgroundRepair
+from ui_auto_gen.adapters.background import (
+    BackgroundRepairAdapter,
+    LamaBackgroundRepair,
+    LightweightBackgroundRepair,
+    PlaceholderBackgroundRepair,
+)
 from ui_auto_gen.adapters.detector import DetectorAdapter, LightweightDetector, OmniParserDetector, PlaceholderDetector
 from ui_auto_gen.adapters.ocr import OcrProtectAdapter, PlaceholderOcrProtector, RapidOcrProtector
 from ui_auto_gen.adapters.reviewer import ContractReviewer, ReviewAdapter
@@ -11,6 +16,7 @@ __all__ = [
     "ContractReviewer",
     "DetectorAdapter",
     "LightweightStyleTransferAdapter",
+    "LamaBackgroundRepair",
     "LightweightBackgroundRepair",
     "LightweightDetector",
     "OcrProtectAdapter",

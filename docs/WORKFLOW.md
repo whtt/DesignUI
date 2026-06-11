@@ -121,13 +121,14 @@ Current behavior:
 
 - Skips background repair when `output.preserve_layout = true`.
 - Uses lightweight local background repair when `algorithms.background_repair = lightweight_background_repair` and layout preservation is disabled.
-- Writes real repair patch PNG files created from surrounding color statistics and blur.
-- Falls back to placeholder repair patches if the lightweight repair adapter fails.
-- Writes a raster background repair preview labeled `LIGHT REPAIR` for lightweight repairs or `INPAINT TODO` for placeholders.
+- Uses LaMa/IOPaint image completion when `algorithms.background_repair = lama_background_inpaint`.
+- Writes real repair patch PNG files from the selected repair adapter.
+- Falls back from LaMa to lightweight repair, then placeholder repair, when adapters fail.
+- Writes a raster background repair preview labeled by the actual adapter.
 
 Future upgrades:
 
-- Prompt-guided large-model inpainting.
+- Prompt-guided image editing with controllable style and negative prompts.
 - Context-aware background reconstruction with generated texture, shadows, and depth cues.
 - Shadow and texture continuation.
 

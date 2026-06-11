@@ -264,3 +264,33 @@ Environment variables:
 $env:DESIGNUI_BACKGROUND_REPAIR_MASK_MODE="auto"
 $env:DESIGNUI_BACKGROUND_REPAIR_BBOX_MAX_AREA="0.12"
 ```
+
+## LaMa Background Inpainting
+
+DesignUI uses `LamaBackgroundRepair` when `algorithms.background_repair = lama_background_inpaint` and `output.preserve_layout = false`.
+
+Recommended isolated environment:
+
+```bash
+conda create -y -n designui_inpaint python=3.11
+conda run -n designui_inpaint python -m pip install -r requirements-inpaint.txt
+```
+
+Python 3.11 is recommended because `iopaint==1.5.3` pins `Pillow==9.5.0`, which has Linux wheels for Python 3.11. Python 3.12 may try to compile Pillow from source.
+
+Runtime variables:
+
+```bash
+export DESIGNUI_INPAINT_ENV=designui_inpaint
+export DESIGNUI_INPAINT_DEVICE=cuda
+export DESIGNUI_BACKGROUND_REPAIR_MASK_MODE=auto
+```
+
+Smoke test:
+
+```bash
+DESIGNUI_INPAINT_ENV=designui_inpaint DESIGNUI_INPAINT_DEVICE=cuda \
+python -B -m ui_auto_gen.cli run --config configs/sample_lama_background_job.json --run-id lama_background_smoke --overwrite
+```
+
+Successful runs should record `actual_adapter = lama_background_inpaint`, `model.engine = iopaint_lama`, and `fallback = null`.

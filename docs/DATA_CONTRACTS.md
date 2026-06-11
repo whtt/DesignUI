@@ -395,11 +395,14 @@ When lightweight style transfer cannot run, `actual_adapter` becomes `placeholde
 ```json
 {
   "schema_version": "1.0",
-  "requested_algorithm": "lightweight_background_repair",
-  "actual_adapter": "lightweight_background_repair",
+  "requested_algorithm": "lama_background_inpaint",
+  "actual_adapter": "lama_background_inpaint",
   "model": {
-    "model_family": "classical_inpaint_approximation",
-    "engine": "pillow_ring_fill"
+    "model_family": "lama",
+    "engine": "iopaint_lama",
+    "env_name": "designui_inpaint",
+    "device": "cuda",
+    "mask_mode": "auto"
   },
   "fallback": null,
   "preserve_layout": false,
@@ -413,18 +416,18 @@ When lightweight style transfer cannot run, `actual_adapter` becomes `placeholde
       "cutout_id": "cutout_mask_det_primary_buttons_001",
       "repair_path": "04_background_repair/repairs/repair_cutout_mask_det_primary_buttons_001.json",
       "repair_asset_path": "04_background_repair/repairs/repair_cutout_mask_det_primary_buttons_001.png",
-      "repair_mask_path": "03_segment/masks/mask_det_primary_buttons_001.png",
-      "repair_scope": "segmentation_mask",
+      "repair_mask_path": "04_background_repair/repairs/lama_inpaint_mask.png",
+      "repair_scope": "bbox",
       "bbox": [64, 64, 256, 128],
-      "source": "lightweight_background_repair",
+      "source": "lama_background_inpaint",
       "placeholder_visual": null,
-      "future_adapter": "large_model_background_inpainting"
+      "future_adapter": null
     }
   ]
 }
 ```
 
-When `output.preserve_layout = true`, background repair is skipped and `repairs` is empty. When lightweight repair fails or placeholder repair is selected, the stage records a fallback and may write `placeholder_visual = inpaint_patch_marker`. For lightweight repair, `bbox` is only the local crop window; the generated repair PNG alpha is constrained by `repair_mask_path` when `repair_scope = segmentation_mask`.
+When `output.preserve_layout = true`, background repair is skipped and `repairs` is empty. When LaMa repair fails, the stage records a fallback and tries lightweight OpenCV/Pillow repair before placeholder repair. For LaMa repair, `repair_mask_path` points to the combined inpaint mask used for the full-canvas IOPaint run; each generated repair PNG is cropped back to the element bbox and alpha-constrained by its repair mask.
 
 ## Compose Manifest
 

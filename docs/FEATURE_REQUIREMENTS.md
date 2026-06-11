@@ -63,10 +63,10 @@ Early versions must make unfinished model integrations visually obvious:
 - Support simple alpha compositing.
 - Support background repair placeholders.
 - Support lightweight background repair when selected elements move away from their original positions.
+- Support optional LaMa/IOPaint background image completion.
 - Skip background repair when the user preserves the original layout.
 - Support source-image restoration for protected text regions.
-- Support visible inpainting placeholders before real background repair is available.
-- Future: real inpainting.
+- Support visible inpainting placeholders when model repair is unavailable.
 - Future: edge feathering and matting.
 - Future: shadow separation.
 

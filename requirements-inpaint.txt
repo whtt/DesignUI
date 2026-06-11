@@ -1,0 +1,8 @@
+# Isolated dependency set for LaMa background inpainting.
+# Recommended environment:
+#   conda create -n designui_inpaint python=3.11
+#   conda run -n designui_inpaint python -m pip install -r requirements-inpaint.txt
+#
+# IOPaint 1.5.3 pins Pillow 9.5, which has Linux wheels for Python 3.11.
+# IOPaint downloads the LaMa model on first use.
+iopaint==1.5.3

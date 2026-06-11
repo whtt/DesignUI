@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ui_auto_gen.adapters.background import LightweightBackgroundRepair, PlaceholderBackgroundRepair
+from ui_auto_gen.adapters.background import LamaBackgroundRepair, LightweightBackgroundRepair, PlaceholderBackgroundRepair
 from ui_auto_gen.schemas import PipelineContext, StageResult
 from ui_auto_gen.stages.base import PipelineStage
 from ui_auto_gen.utils import read_json, write_json
@@ -86,6 +86,47 @@ class BackgroundRepairStage(PipelineStage):
         if preserve_layout:
             return _SkippedBackgroundRepair(), [], None
 
+        if requested_algorithm in {"lama_background_inpaint", "lama_inpaint", "model_background_inpaint"}:
+            try:
+                adapter = LamaBackgroundRepair()
+                repairs = adapter.create_repairs(
+                    cutouts=cutouts,
+                    repairs_dir=repairs_dir,
+                    image_size=image_size,
+                    base_image=base_image,
+                    preserve_layout=preserve_layout,
+                )
+                return adapter, repairs, None
+            except Exception as exc:
+                fallback_adapter = LightweightBackgroundRepair()
+                try:
+                    repairs = fallback_adapter.create_repairs(
+                        cutouts=cutouts,
+                        repairs_dir=repairs_dir,
+                        image_size=image_size,
+                        base_image=base_image,
+                        preserve_layout=preserve_layout,
+                    )
+                    return fallback_adapter, repairs, {
+                        "requested_adapter": "lama_background_inpaint",
+                        "fallback_adapter": fallback_adapter.adapter_name,
+                        "reason": str(exc),
+                    }
+                except Exception as fallback_exc:
+                    placeholder_adapter = PlaceholderBackgroundRepair()
+                    repairs = placeholder_adapter.create_repairs(
+                        cutouts=cutouts,
+                        repairs_dir=repairs_dir,
+                        image_size=image_size,
+                        base_image=base_image,
+                        preserve_layout=preserve_layout,
+                    )
+                    return placeholder_adapter, repairs, {
+                        "requested_adapter": "lama_background_inpaint",
+                        "fallback_adapter": placeholder_adapter.adapter_name,
+                        "reason": f"{exc}; lightweight fallback failed: {fallback_exc}",
+                    }
+
         if requested_algorithm in {"lightweight_background_repair", "lightweight_inpaint", "pillow_inpaint"}:
             try:
                 adapter = LightweightBackgroundRepair()
@@ -133,9 +174,11 @@ def _manifest_notes(adapter_name: str, preserve_layout: bool, fallback: dict | N
         return ["Background repair skipped because preserve_layout is enabled."]
     if fallback:
         return [
-            f"Requested lightweight background repair but fell back to {adapter_name}.",
+            f"Requested background repair fell back to {adapter_name}.",
             f"Fallback reason: {fallback['reason']}",
         ]
+    if adapter_name == "lama_background_inpaint":
+        return ["LaMa image completion created model-based background repair patches for moved elements."]
     if adapter_name == "lightweight_background_repair":
         return ["Lightweight local background repair created real repair patches for moved elements."]
     return ["Placeholder background repair patches created for future inpainting replacement."]
@@ -146,9 +189,11 @@ def _result_notes(adapter_name: str, repair_count: int, preserve_layout: bool, f
         return ["Skipped background repair because layout is preserved."]
     if fallback:
         return [
-            f"Created {repair_count} fallback placeholder background repair patches.",
+            f"Created {repair_count} fallback background repair patches.",
             f"Fallback reason: {fallback['reason']}",
         ]
+    if adapter_name == "lama_background_inpaint":
+        return [f"Created {repair_count} LaMa background repair patches."]
     if adapter_name == "lightweight_background_repair":
         return [f"Created {repair_count} lightweight background repair patches."]
     return [f"Created {repair_count} placeholder background repair patches."]

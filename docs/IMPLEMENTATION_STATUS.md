@@ -116,10 +116,12 @@
 - Completed: optional `LightweightBackgroundRepair` creates real local repair patch PNGs when layout preservation is disabled.
 - Completed: background repair prefers OpenCV Telea inpainting when available, with Pillow ring-fill fallback.
 - Completed: background repair supports `mask_mode = auto`, using bbox repair for small UI controls and segmentation-mask repair for larger regions.
+- Completed: optional `LamaBackgroundRepair` uses IOPaint LaMa in the isolated `designui_inpaint` environment for model-based background completion.
+- Completed: LaMa repair falls back to lightweight OpenCV/Pillow repair, then placeholder repair, while recording fallback metadata.
 - Completed: lightweight background repair regions are labeled `LIGHT REPAIR`; placeholder fallback regions are labeled `INPAINT TODO`.
 - Completed: UI now displays text protection and background repair previews as independent debug cards.
 - Completed: `06_compose/final.png` applies real lightweight background repairs and skips placeholder background repair overlays so visible inpainting markers do not leak into final output.
-- Still not connected: real OCR text content regression and real inpainting models.
+- Still not connected: real OCR text content regression and prompt-guided image editing/style models.
 
 ### SAM2 segmentation
 
